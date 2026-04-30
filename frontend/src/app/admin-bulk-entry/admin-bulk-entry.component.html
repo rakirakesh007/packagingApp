@@ -1,0 +1,77 @@
+<div class="p-4">
+  <h1 class="text-2xl font-bold mb-4">Admin Bulk Entry</h1>
+  <form [formGroup]="bulkEntryForm">
+    <table class="table-auto w-full border-collapse border border-gray-300">
+      <thead>
+        <tr>
+          <th class="border border-gray-300 px-4 py-2">Shop Name</th>
+          <th class="border border-gray-300 px-4 py-2">Item</th>
+          <th class="border border-gray-300 px-4 py-2">Quantity</th>
+          <th class="border border-gray-300 px-4 py-2">Sale Price</th>
+          <th class="border border-gray-300 px-4 py-2">Purchase Price</th>
+          <th class="border border-gray-300 px-4 py-2">Subtotal</th>
+          <th class="border border-gray-300 px-4 py-2">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let row of rows.controls; let i = index; trackBy: trackByIndex"
+          [formGroup]="row"
+        >
+          <td class="border border-gray-300 px-4 py-2">
+            <input
+              formControlName="shopName"
+              class="w-full border border-gray-300 px-2 py-1"
+            />
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            <input
+              formControlName="item"
+              class="w-full border border-gray-300 px-2 py-1"
+            />
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            <input
+              formControlName="quantity"
+              type="number"
+              class="w-full border border-gray-300 px-2 py-1"
+            />
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            <input
+              formControlName="price"
+              type="number"
+              class="w-full border border-gray-300 px-2 py-1"
+            />
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            <input
+              formControlName="purchasePrice"
+              type="number"
+              class="w-full border border-gray-300 px-2 py-1"
+            />
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            {{ (row.value.quantity || 0) * (row.value.price || 0) }}
+          </td>
+          <td class="border border-gray-300 px-4 py-2">
+            {{ (row.value.quantity || 0) * ((row.value.price || 0) - (row.value.purchasePrice || 0)) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="mt-4">
+      <button
+        type="button"
+        (click)="addRow()"
+        class="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Add Row
+      </button>
+    </div>
+    <div class="mt-4 text-right">
+      <h2 class="text-xl font-bold">Grand Total: {{ grandTotal() }}</h2>
+      <h2 class="text-xl font-bold">Total Profit: {{ totalProfit() }}</h2>
+    </div>
+  </form>
+</div>

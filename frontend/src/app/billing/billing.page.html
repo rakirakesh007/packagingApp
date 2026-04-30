@@ -1,0 +1,43 @@
+<div class="p-4">
+  <h1 class="text-2xl font-bold mb-4">Billing</h1>
+
+  <label for="customerName" class="block text-sm font-medium text-gray-700">
+    Customer/Shop Name
+  </label>
+  <input
+    id="customerName"
+    [(ngModel)]="customerName"
+    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+  />
+
+  <h2 class="text-xl font-bold mt-6">Items</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div
+      *ngFor="let item of activeAssignment()"
+      class="bg-white shadow-md rounded-lg p-4 border"
+    >
+      <h3 class="text-lg font-bold">{{ item.item_name }}</h3>
+      <p>Price: ₹{{ item.price }}</p>
+      <p>Available: {{ item.qty }}</p>
+      <label for="qty" class="block text-sm font-medium text-gray-700">
+        Quantity to Sell
+      </label>
+      <input
+        type="number"
+        id="qty"
+        [(ngModel)]="item.qty"
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+      />
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <p class="text-lg font-bold">Total: ₹{{ totalAmount }}</p>
+    <button
+      class="bg-blue-500 text-white px-4 py-2 rounded mt-4"
+      (click)="confirmAndSendBill()"
+    >
+      Confirm & Send Bill
+    </button>
+  </div>
+</div>

@@ -1,0 +1,32 @@
+<div *ngIf="globalLoading()" class="loading-spinner">Loading...</div>
+<div class="p-4" *ngIf="!globalLoading()">
+  <h1 class="text-2xl font-bold mb-4">End of Day Report</h1>
+  <table class="table-auto w-full border-collapse border border-gray-300">
+    <thead>
+      <tr>
+        <th class="border border-gray-300 px-4 py-2">Item Name</th>
+        <th class="border border-gray-300 px-4 py-2">Opening</th>
+        <th class="border border-gray-300 px-4 py-2">Sold</th>
+        <th class="border border-gray-300 px-4 py-2">Remaining</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of reportData().closingStock; trackBy: trackByItem">
+        <td class="border border-gray-300 px-4 py-2">{{ item.item_id }}</td>
+        <td class="border border-gray-300 px-4 py-2">{{ item.opening }}</td>
+        <td class="border border-gray-300 px-4 py-2">{{ item.sold }}</td>
+        <td class="border border-gray-300 px-4 py-2">{{ item.remaining }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="mt-4">
+    <h2 class="text-xl font-bold">Final Summary</h2>
+    <p>Total Cash to Deposit: {{ reportData().totalCash }}</p>
+  </div>
+  <button
+    class="bg-green-500 text-white px-4 py-2 rounded mt-4"
+    (click)="shareViaWhatsApp()"
+  >
+    Share via WhatsApp
+  </button>
+</div>
