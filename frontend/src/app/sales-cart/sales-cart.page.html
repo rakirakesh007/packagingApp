@@ -1,0 +1,125 @@
+<div class="cart-page">
+
+  <!-- Top Search Bar -->
+  <header class="cart-header">
+    <h1 class="brand-title">🌶️ DesiMasalaHub</h1>
+    <div class="search-wrap">
+      <input
+        type="search"
+        class="search-input"
+        placeholder="Search spices..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        autocomplete="off"
+      />
+    </div>
+  </header>
+
+  <!-- Success Toast -->
+  @if (orderSuccess()) {
+    <div class="toast-success" role="status">✅ Order placed successfully!</div>
+  }
+
+  <!-- Items List -->
+  <div class="items-list">
+    @for (item of filteredItems(); track item.id) {
+      <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
+        <div class="item-info">
+          <span class="item-name">{{ item.item_name }}</span>
+          <span class="item-price">₹{{ item.unit_price }}/unit</span>
+          @if (item.total_stock <= item.low_stock_threshold) {
+            <span class="low-stock-badge">Low Stock</span>
+          }
+        </div>
+        <div class="item-controls">
+          @if (getQty(item.id) > 0) {
+            <button class="btn-minus" (click)="decrement(item.id)" aria-label="Remove one">−</button>
+            <span class="qty-badge">{{ getQty(item.id) }}</span>
+          }
+          <button class="btn-plus" (click)="increment(item.id)" aria-label="Add one">+</button>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state">No spices found</div>
+    }
+  </div>
+
+  <!-- Sticky Cart Bar -->
+  @if (cartCount() > 0) {
+    <div class="cart-bar">
+      <div class="cart-bar-info">
+        <span class="cart-count">{{ cartCount() }} item{{ cartCount() > 1 ? 's' : '' }}</span>
+        <span class="cart-total">₹{{ cartTotal() }}</span>
+      </div>
+      <button class="btn-checkout" (click)="openCheckout()">Checkout →</button>
+    </div>
+  }
+
+  <!-- Checkout Overlay -->
+  @if (showCheckout()) {
+    <div class="overlay" (click)="closeCheckout()"></div>
+    <div class="checkout-sheet">
+      <div class="sheet-handle"></div>
+      <h2 class="sheet-title">Order Summary</h2>
+
+      <!-- Cart review -->
+      <div class="checkout-items">
+        @for (ci of cartItemsList(); track ci.item.id) {
+          <div class="checkout-item">
+            <span>{{ ci.item.item_name }} × {{ ci.qty }}</span>
+            <span>₹{{ ci.item.unit_price * ci.qty }}</span>
+          </div>
+        }
+        <div class="checkout-total">
+          <strong>Total</strong>
+          <strong>₹{{ cartTotal() }}</strong>
+        </div>
+      </div>
+
+      <!-- Shop details -->
+      <div class="form-group">
+        <label class="form-label">Shop Name (optional)</label>
+        <input
+          type="text"
+          class="form-input"
+          placeholder="Enter shop name"
+          [ngModel]="shopName()"
+          (ngModelChange)="shopName.set($event)"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mobile Number (for WhatsApp)</label>
+        <input
+          type="tel"
+          class="form-input"
+          placeholder="10-digit mobile number"
+          maxlength="10"
+          [ngModel]="shopMobile()"
+          (ngModelChange)="shopMobile.set($event)"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Payment Mode</label>
+        <div class="payment-toggle">
+          <button
+            class="toggle-btn"
+            [class.active]="paymentMode() === 'cash'"
+            (click)="paymentMode.set('cash')"
+          >💵 Cash</button>
+          <button
+            class="toggle-btn"
+            [class.active]="paymentMode() === 'online'"
+            (click)="paymentMode.set('online')"
+          >📲 Online</button>
+        </div>
+      </div>
+
+      <button class="btn-place-order" (click)="placeOrder()">
+        Place Order &amp; Send WhatsApp Bill
+      </button>
+    </div>
+  }
+
+</div>

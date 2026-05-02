@@ -3,7 +3,7 @@ export interface InventoryItem {
   item_name: string;
   total_stock: number;
   unit_price: number;
-  purchase_price?: number;
-  low_stock_threshold?: number;
-  qty?: number; // Optional for assignment purposes
+  purchase_price: number;
+  low_stock_threshold: number;
+  image_url?: string;
 }

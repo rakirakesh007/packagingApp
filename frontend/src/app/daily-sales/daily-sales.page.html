@@ -1,0 +1,61 @@
+<div class="daily-page">
+
+  <header class="daily-header">
+    <h1>📊 Daily Report</h1>
+    <input
+      type="date"
+      class="date-picker"
+      [value]="selectedDate()"
+      (change)="onDateChange($event)"
+    />
+  </header>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="summary-card total">
+      <span class="card-label">Total Sales</span>
+      <span class="card-value">₹{{ totalSales() }}</span>
+    </div>
+    <div class="summary-card cash">
+      <span class="card-label">💵 Cash to Deposit</span>
+      <span class="card-value">₹{{ totalCash() }}</span>
+    </div>
+    <div class="summary-card online">
+      <span class="card-label">📲 Online</span>
+      <span class="card-value">₹{{ totalOnline() }}</span>
+    </div>
+  </div>
+
+  <!-- Sales Table -->
+  @if (sales().length > 0) {
+    <div class="table-wrap">
+      <table class="sales-table">
+        <thead>
+          <tr>
+            <th>Shop</th>
+            <th>Time</th>
+            <th>Amount</th>
+            <th>Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sale of sales(); track sale._id) {
+            <tr>
+              <td>{{ sale.shop_name || '—' }}</td>
+              <td>{{ formatTime(sale.timestamp) }}</td>
+              <td class="amount-cell">₹{{ sale.total_amount }}</td>
+              <td>
+                <span class="mode-badge" [class.mode-cash]="sale.payment_mode === 'cash'" [class.mode-online]="sale.payment_mode === 'online'">
+                  {{ sale.payment_mode === 'cash' ? '💵 Cash' : '📲 Online' }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="empty-state">No sales recorded for this date.</div>
+  }
+
+</div>

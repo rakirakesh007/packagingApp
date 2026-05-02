@@ -1,0 +1,127 @@
+.daily-page {
+  min-height: 100dvh;
+  background: #f8f9fa;
+  padding-bottom: 80px;
+}
+
+.daily-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
+  padding: 0.85rem 1rem 0.65rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+}
+
+.date-picker {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  color: #334155;
+  outline: none;
+  &:focus { border-color: #f97316; }
+}
+
+.summary-cards {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.85rem 0.85rem 0;
+}
+
+.summary-card {
+  flex: 1;
+  border-radius: 12px;
+  padding: 0.85rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+
+  &.total  { background: #fff7ed; border: 1.5px solid #fed7aa; }
+  &.cash   { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+  &.online { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+}
+
+.card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.card-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.table-wrap {
+  margin: 0.85rem;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  thead {
+    background: #f1f5f9;
+    th {
+      padding: 0.65rem 0.75rem;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  tbody tr {
+    border-top: 1px solid #f1f5f9;
+    &:hover { background: #fafafa; }
+    td {
+      padding: 0.65rem 0.75rem;
+      color: #334155;
+      vertical-align: middle;
+    }
+  }
+}
+
+.amount-cell { font-weight: 700; color: #1e293b; }
+
+.mode-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  &.mode-cash   { background: #dcfce7; color: #15803d; }
+  &.mode-online { background: #dbeafe; color: #1d4ed8; }
+}
+
+.empty-state {
+  text-align: center;
+  color: #94a3b8;
+  padding: 4rem 0;
+  font-size: 1rem;
+}

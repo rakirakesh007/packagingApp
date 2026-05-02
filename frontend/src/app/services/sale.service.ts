@@ -7,16 +7,23 @@ export class SaleService {
   private http = inject(HttpClient);
 
   createSale(data: {
-    customer_name: string;
+    delivery_boy_id: string;
     items: { item_id: string; qty: number; price: number }[];
     total_amount: number;
-    payment_mode: 'Cash' | 'Online';
-    delivery_boy_id: string;
+    payment_mode: 'cash' | 'online';
+    shop_name?: string;
+    shop_mobile?: string;
   }) {
     return this.http.post<Sale>('/sale', data);
   }
 
   getSalesHistory(deliveryBoyId: string) {
     return this.http.get<Sale[]>(`/sale/history/${deliveryBoyId}`);
+  }
+
+  /** GET /sale/today/:id?date=YYYY-MM-DD */
+  getTodaySales(deliveryBoyId: string, date?: string) {
+    const q = date ? `?date=${date}` : '';
+    return this.http.get<Sale[]>(`/sale/today/${deliveryBoyId}${q}`);
   }
 }

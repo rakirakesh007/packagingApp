@@ -1,20 +1,27 @@
 import {
+  ChangeDetectionStrategy,
   Component,
+  OnInit,
   inject,
   signal,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { GlobalLoadingService } from '../services/global-loading.service';
 import { saveAs } from 'file-saver';
 
-// Fixing type issues for eodSummary
 interface EodSummary {
   delivery_boy_id: string;
   openingStock: number;
   sold: number;
   remaining: number;
   cashCollected: number;
+}
+
+interface MonthlySummary {
+  totalSales: number;
+  totalExpenses: number;
+  netProfit: number;
 }
 
 @Component({
@@ -25,48 +32,47 @@ interface EodSummary {
   styleUrls: ['./admin-dashboard.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AdminDashboardPage {
+export class AdminDashboardPage implements OnInit {
   private http = inject(HttpClient);
+  private loading = inject(GlobalLoadingService);
 
   eodSummary = signal<EodSummary[]>([]);
-  monthlySummary = signal({ totalSales: 0, totalExpenses: 0, netProfit: 0 });
+  monthlySummary = signal<MonthlySummary>({
+    totalSales: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+  });
 
-  constructor() {
+  ngOnInit(): void {
     this.fetchEodSummary();
     this.fetchMonthlySummary();
   }
 
-  fetchEodSummary() {
+  private fetchEodSummary(): void {
+    this.loading.show();
     this.http.get<EodSummary[]>('/admin/reports/eod').subscribe({
       next: (data) => this.eodSummary.set(data),
       error: (err) => console.error('Failed to fetch EOD summary:', err),
+      complete: () => this.loading.hide(),
     });
   }
 
-  fetchMonthlySummary() {
-    this.http.get<any>('/admin/reports/monthly').subscribe({
+  private fetchMonthlySummary(): void {
+    this.http.get<MonthlySummary>('/admin/reports/monthly').subscribe({
       next: (data) => this.monthlySummary.set(data),
       error: (err) => console.error('Failed to fetch monthly summary:', err),
     });
   }
 
-  exportToCSV() {
-    const data = this.eodSummary().map((summary) => ({
-      DeliveryBoy: summary.delivery_boy_id,
-      OpeningStock: summary.openingStock,
-      Sold: summary.sold,
-      Remaining: summary.remaining,
-      CashCollected: summary.cashCollected,
-    }));
-
-    const csvContent = [
+  exportToCSV(): void {
+    const rows = this.eodSummary().map((s) =>
+      `${s.delivery_boy_id},${s.openingStock},${s.sold},${s.remaining},${s.cashCollected}`
+    );
+    const csv = [
       'DeliveryBoy,OpeningStock,Sold,Remaining,CashCollected',
-      ...data.map((row) =>
-        `${row.DeliveryBoy},${row.OpeningStock},${row.Sold},${row.Remaining},${row.CashCollected}`
-      ),
+      ...rows,
     ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, 'EOD_Report.csv');
   }
 }

@@ -1,0 +1,69 @@
+<!-- expense/expense.page.html -->
+<div class="p-4">
+  <h2 class="text-xl font-bold mb-4">Expense Tracker</h2>
+
+  <form [formGroup]="expenseForm" (ngSubmit)="addExpense()" class="mb-6 flex flex-wrap gap-2">
+    <select formControlName="category" class="border rounded p-2" aria-label="Category">
+      @for (cat of categories; track cat) {
+        <option [value]="cat">{{ cat }}</option>
+      }
+    </select>
+
+    <input
+      formControlName="amount"
+      type="number"
+      placeholder="Amount (₹)"
+      class="border rounded p-2 w-32"
+      aria-label="Amount"
+      min="1"
+    />
+
+    <input
+      formControlName="description"
+      placeholder="Description (optional)"
+      class="border rounded p-2 flex-1"
+      aria-label="Description"
+    />
+
+    <button
+      type="submit"
+      [disabled]="expenseForm.invalid"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded disabled:opacity-50"
+    >
+      Add Expense
+    </button>
+  </form>
+
+  <table class="w-full border-collapse border border-gray-200 text-sm">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="border px-3 py-2 text-left">Date</th>
+        <th class="border px-3 py-2 text-left">Category</th>
+        <th class="border px-3 py-2 text-right">Amount</th>
+        <th class="border px-3 py-2 text-left">Description</th>
+        <th class="border px-3 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (expense of expenses(); track expense._id) {
+        <tr class="hover:bg-gray-50">
+          <td class="border px-3 py-2">{{ expense.date | date:'dd MMM yyyy' }}</td>
+          <td class="border px-3 py-2">{{ expense.category }}</td>
+          <td class="border px-3 py-2 text-right font-mono">₹{{ expense.amount }}</td>
+          <td class="border px-3 py-2">{{ expense.description }}</td>
+          <td class="border px-3 py-2 text-center">
+            <button
+              (click)="deleteExpense(expense._id)"
+              class="text-red-500 hover:text-red-700 font-bold"
+              aria-label="Delete expense"
+            >✕</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="5" class="border px-3 py-4 text-center text-gray-400">No expenses recorded.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

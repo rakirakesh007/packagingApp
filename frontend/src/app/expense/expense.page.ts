@@ -1,80 +1,92 @@
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import {
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ExpenseService } from '../services/expense.service';
+import { GlobalLoadingService } from '../services/global-loading.service';
 import { Expense } from '../models/expense.model';
+
+const EXPENSE_CATEGORIES = [
+  'Fuel',
+  'Raw Material',
+  'Maintenance',
+  'Salary',
+  'Miscellaneous',
+] as const;
+
+type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
 @Component({
   selector: 'app-expense',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
-  template: `
-    <div class="p-4">
-      <h2 class="text-xl font-bold mb-4">Expenses</h2>
-      <form [formGroup]="expenseForm" (ngSubmit)="addExpense()" class="mb-4">
-        <input formControlName="category" placeholder="Category" class="border p-2 mr-2" />
-        <input formControlName="amount" type="number" placeholder="Amount" class="border p-2 mr-2" />
-        <input formControlName="description" placeholder="Description" class="border p-2 mr-2" />
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2">Add</button>
-      </form>
-      <ul>
-        <li *ngFor="let expense of expenses()" class="flex justify-between border-b py-2">
-          <span>{{ expense.category }} - ₹{{ expense.amount }}</span>
-          <button (click)="confirmDelete(expense._id)" class="text-red-500">Delete</button>
-        </li>
-      </ul>
-    </div>
-  `,
+  templateUrl: './expense.page.html',
+  styleUrls: ['./expense.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ExpensePage {
+export class ExpensePage implements OnInit {
   private expenseService = inject(ExpenseService);
-  private fb = inject(FormBuilder);
+  private loading = inject(GlobalLoadingService);
+  private fb = inject(NonNullableFormBuilder);
 
+  readonly categories = EXPENSE_CATEGORIES;
   expenses = signal<Expense[]>([]);
 
   expenseForm = this.fb.group({
-    category: ['', Validators.required],
-    amount: [0, Validators.required],
-    description: [''],
+    category: this.fb.control<ExpenseCategory>('Fuel', Validators.required),
+    amount: this.fb.control(0, [Validators.required, Validators.min(1)]),
+    description: this.fb.control(''),
   });
 
-  constructor() {
+  ngOnInit(): void {
     this.loadExpenses();
   }
 
-  loadExpenses() {
+  private loadExpenses(): void {
+    this.loading.show();
     this.expenseService.getExpenses().subscribe({
       next: (data) => this.expenses.set(data),
       error: (err) => console.error('Failed to load expenses:', err),
+      complete: () => this.loading.hide(),
     });
   }
 
-  addExpense() {
+  addExpense(): void {
     if (this.expenseForm.invalid) return;
-    const val = this.expenseForm.value;
-    this.expenseService.addExpense({
-      category: val.category!,
-      amount: val.amount!,
-      description: val.description ?? undefined,
-    }).subscribe({
-      next: () => {
-        this.expenseForm.reset();
-        this.loadExpenses();
-      },
-      error: (err) => console.error('Failed to add expense:', err),
-    });
-  }
-
-  confirmDelete(expenseId: string) {
-    if (confirm('Are you sure you want to delete this expense?')) {
-      this.expenseService.deleteExpense(expenseId).subscribe({
+    const { category, amount, description } = this.expenseForm.getRawValue();
+    this.loading.show();
+    this.expenseService
+      .addExpense({ category, amount, description: description || undefined })
+      .subscribe({
         next: () => {
-          alert('Expense deleted successfully!');
+          this.expenseForm.reset({ category: 'Fuel', amount: 0, description: '' });
           this.loadExpenses();
         },
-        error: (err) => console.error('Failed to delete expense:', err),
+        error: (err) => {
+          console.error('Failed to add expense:', err);
+          this.loading.hide();
+        },
       });
-    }
+  }
+
+  deleteExpense(id: string): void {
+    if (!confirm('Delete this expense?')) return;
+    this.loading.show();
+    this.expenseService.deleteExpense(id).subscribe({
+      next: () => this.loadExpenses(),
+      error: (err) => {
+        console.error('Failed to delete expense:', err);
+        this.loading.hide();
+      },
+    });
   }
 }

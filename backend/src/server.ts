@@ -17,12 +17,26 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes
+// Routes — all imported from within src/ to respect rootDir
+import authRoute from './routes/auth.route';
 import inventoryRoute from './routes/inventory.route';
+import saleRoute from './routes/sale.route';
+import assignmentRoute from './routes/assignment.route';
+import adminReportsRoute from './routes/admin-reports.route';
+import expensesRoute from './routes/expenses.route';
 import reportsRoute from './routes/reports.route';
+import usersRoute from './routes/users.route';
+import shopsRoute from './routes/shops.route';
 
+app.use('/auth', authRoute);
 app.use('/inventory', inventoryRoute);
+app.use('/sale', saleRoute);
+app.use('/assignment', assignmentRoute);
+app.use('/admin/reports', adminReportsRoute);
+app.use('/expenses', expensesRoute);
 app.use('/reports', reportsRoute);
+app.use('/users', usersRoute);
+app.use('/shops', shopsRoute);
 
 // Connect to MongoDB and start server
 mongoose

@@ -1,15 +1,21 @@
 import {
+  ChangeDetectionStrategy,
   Component,
+  OnInit,
   inject,
   signal,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AssignmentService } from '../services/assignment.service';
+import { AssignmentService, User } from '../services/assignment.service';
 import { InventoryService } from '../services/inventory.service';
-import { LoadingService } from '../services/loading.service';
+import { GlobalLoadingService } from '../services/global-loading.service';
+import { AuthService } from '../auth/auth.service';
 import { InventoryItem } from '../models/inventory.model';
+
+interface AssignmentItem extends InventoryItem {
+  assignedQty: number;
+}
 
 @Component({
   selector: 'app-assignment',
@@ -19,45 +25,74 @@ import { InventoryItem } from '../models/inventory.model';
   styleUrls: ['./assignment.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AssignmentPage {
+export class AssignmentPage implements OnInit {
   private assignmentService = inject(AssignmentService);
   private inventoryService = inject(InventoryService);
-  private loadingService = inject(LoadingService);
+  private loading = inject(GlobalLoadingService);
+  private auth = inject(AuthService);
 
-  inventoryItems = signal<InventoryItem[]>([]);
-  selectedItems = signal<InventoryItem[]>([]);
-  deliveryBoyId = signal('');
-  deliveryBoys = signal<{ id: string; name: string }[]>([]);
+  inventoryItems = signal<AssignmentItem[]>([]);
+  deliveryBoys = signal<User[]>([]);
+  selectedDeliveryBoyId = signal<string>('');
 
-  constructor() {
+  ngOnInit(): void {
+    this.fetchDeliveryBoys();
     this.fetchInventory();
   }
 
-  fetchInventory() {
-    this.loadingService.set(true);
-    this.inventoryService
-      .getItems()
-      .subscribe({
-        next: (data: InventoryItem[]) => this.inventoryItems.set(data),
-        error: (err) => console.error('Failed to fetch inventory:', err),
-        complete: () => this.loadingService.set(false),
-      });
+  private fetchDeliveryBoys(): void {
+    this.assignmentService.getDeliveryBoys().subscribe({
+      next: (data) => this.deliveryBoys.set(data),
+      error: (err) => console.error('Failed to fetch delivery boys:', err),
+    });
   }
 
-  confirmAssignment() {
-    const itemsToAssign = this.selectedItems().map((item: InventoryItem) => ({
-      item_id: item.id,
-      qty: item.qty ?? 0,
-    }));
+  private fetchInventory(): void {
+    this.loading.show();
+    this.inventoryService.getItems().subscribe({
+      next: (data) =>
+        this.inventoryItems.set(
+          data.map((item) => ({ ...item, assignedQty: 0 }))
+        ),
+      error: (err) => console.error('Failed to fetch inventory:', err),
+      complete: () => this.loading.hide(),
+    });
+  }
 
+  confirmAssignment(): void {
+    if (!this.selectedDeliveryBoyId()) {
+      alert('Please select a delivery boy.');
+      return;
+    }
+    const items = this.inventoryItems()
+      .filter((i) => i.assignedQty > 0)
+      .map((i) => ({ item_id: i.id, qty: i.assignedQty }));
+
+    if (items.length === 0) {
+      alert('Please assign at least one item.');
+      return;
+    }
+
+    this.loading.show();
     this.assignmentService
       .createAssignment({
-        delivery_boy_id: this.deliveryBoyId(),
-        items: itemsToAssign,
+        delivery_boy_id: this.selectedDeliveryBoyId(),
+        items,
       })
       .subscribe({
-        next: () => alert('Assignment created successfully!'),
-        error: (err) => console.error('Failed to create assignment:', err),
+        next: () => {
+          alert('Assignment created successfully!');
+          this.loading.hide();
+          // Reset form
+          this.selectedDeliveryBoyId.set('');
+          this.inventoryItems.update((items) =>
+            items.map((i) => ({ ...i, assignedQty: 0 }))
+          );
+        },
+        error: (err) => {
+          console.error('Failed to create assignment:', err);
+          this.loading.hide();
+        },
       });
   }
 }

@@ -1,41 +1,55 @@
 <div class="p-4">
-  <h1 class="text-2xl font-bold mb-4">Admin Dashboard</h1>
+  <h1 class="text-2xl font-bold mb-6">Admin Dashboard</h1>
 
-  <h2 class="text-xl font-bold mt-6">EOD Summary</h2>
-  <table class="table-auto w-full border-collapse border border-gray-300">
-    <thead>
-      <tr>
-        <th class="border border-gray-300 px-4 py-2">Delivery Boy</th>
-        <th class="border border-gray-300 px-4 py-2">Opening Stock</th>
-        <th class="border border-gray-300 px-4 py-2">Sold</th>
-        <th class="border border-gray-300 px-4 py-2">Remaining</th>
-        <th class="border border-gray-300 px-4 py-2">Cash Collected</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let summary of eodSummary()">
-        <td class="border border-gray-300 px-4 py-2">{{ summary.delivery_boy_id }}</td>
-        <td class="border border-gray-300 px-4 py-2">{{ summary.openingStock }}</td>
-        <td class="border border-gray-300 px-4 py-2">{{ summary.sold }}</td>
-        <td class="border border-gray-300 px-4 py-2">{{ summary.remaining }}</td>
-        <td class="border border-gray-300 px-4 py-2">₹{{ summary.cashCollected }}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2 class="text-xl font-bold mt-6">Monthly Summary</h2>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- Monthly Summary -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <div class="bg-green-100 p-4 rounded shadow">
       <h3 class="text-lg font-bold">Total Revenue</h3>
-      <p class="text-2xl">₹{{ monthlySummary().totalSales }}</p>
+      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().totalSales }}</p>
     </div>
     <div class="bg-red-100 p-4 rounded shadow">
       <h3 class="text-lg font-bold">Total Expenses</h3>
-      <p class="text-2xl">₹{{ monthlySummary().totalExpenses }}</p>
+      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().totalExpenses }}</p>
     </div>
     <div class="bg-blue-100 p-4 rounded shadow">
       <h3 class="text-lg font-bold">Net Profit</h3>
-      <p class="text-2xl">₹{{ monthlySummary().netProfit }}</p>
+      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().netProfit }}</p>
     </div>
-  </div>
+  </section>
+
+  <!-- EOD Table -->
+  <section>
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xl font-bold">EOD Summary</h2>
+      <button
+        (click)="exportToCSV()"
+        class="bg-gray-700 text-white text-sm px-3 py-1 rounded hover:bg-gray-800"
+        aria-label="Export to CSV"
+      >Export CSV</button>
+    </div>
+    <table class="table-auto w-full border-collapse border border-gray-300 text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border border-gray-300 px-4 py-2 text-left">Delivery Boy</th>
+          <th class="border border-gray-300 px-4 py-2 text-right">Opening Stock</th>
+          <th class="border border-gray-300 px-4 py-2 text-right">Sold</th>
+          <th class="border border-gray-300 px-4 py-2 text-right">Remaining</th>
+          <th class="border border-gray-300 px-4 py-2 text-right">Cash Collected</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (summary of eodSummary(); track summary.delivery_boy_id) {
+          <tr class="hover:bg-gray-50">
+            <td class="border border-gray-300 px-4 py-2">{{ summary.delivery_boy_id }}</td>
+            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.openingStock }}</td>
+            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.sold }}</td>
+            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.remaining }}</td>
+            <td class="border border-gray-300 px-4 py-2 text-right font-mono">&#x20B9;{{ summary.cashCollected }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="border px-4 py-4 text-center text-gray-400">No data yet.</td></tr>
+        }
+      </tbody>
+    </table>
+  </section>
 </div>
