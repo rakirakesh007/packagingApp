@@ -91,5 +91,6 @@
 - [x] Expense Management (CRUD)
 - [x] EOD Reporting (Admin)
 - [x] WhatsApp Deep Link Integration (wa.me with full receipt)
+- [x] Delivery Boy Management (Admin CRUD: add/edit/deactivate, isActive login gate)
 - [ ] Shops Marketing Page (Admin view of all shops)
 - [ ] Render Deployment Scripts (PENDING)

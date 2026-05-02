@@ -1,0 +1,103 @@
+<div class="users-page">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">👥 Delivery Boys</h1>
+      <p class="page-sub">
+        <span class="badge badge-active">{{ activeCount() }} Active</span>
+        <span class="badge badge-inactive">{{ inactiveCount() }} Inactive</span>
+      </p>
+    </div>
+    <button class="btn-add" (click)="openAddForm()">+ Add Delivery Boy</button>
+  </div>
+
+  <!-- Success toast -->
+  @if (successMsg()) {
+    <div class="toast-success" role="status">✅ {{ successMsg() }}</div>
+  }
+
+  <!-- Add Form -->
+  @if (showAddForm()) {
+    <div class="add-card">
+      <h2 class="card-title">New Delivery Boy</h2>
+      <form [formGroup]="addForm" (ngSubmit)="submitAdd()">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Full Name *</label>
+            <input formControlName="name" type="text" placeholder="e.g. Ravi Kumar" />
+          </div>
+          <div class="form-field">
+            <label>Username * <span class="hint">(used to login)</span></label>
+            <input formControlName="username" type="text" placeholder="e.g. ravi01" autocomplete="off" />
+          </div>
+          <div class="form-field">
+            <label>Password * <span class="hint">(min 6 chars)</span></label>
+            <input formControlName="password" type="password" placeholder="Set a password" autocomplete="new-password" />
+          </div>
+          <div class="form-field">
+            <label>Mobile Number</label>
+            <input formControlName="mobile_number" type="tel" placeholder="10-digit number" />
+          </div>
+        </div>
+
+        @if (errorMsg()) {
+          <div class="error-alert">⚠️ {{ errorMsg() }}</div>
+        }
+
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="cancelAdd()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="addForm.invalid">Save Delivery Boy</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Users Table -->
+  <div class="table-card">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Mobile</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user._id) {
+          <tr [class.inactive-row]="!user.isActive">
+            <td class="name-cell">
+              <span class="avatar">{{ (user.name || user.username).charAt(0).toUpperCase() }}</span>
+              {{ user.name || '—' }}
+            </td>
+            <td class="username-cell">{{ user.username }}</td>
+            <td>{{ user.mobile_number || '—' }}</td>
+            <td>
+              <span class="status-badge" [class.active]="user.isActive" [class.inactive]="!user.isActive">
+                {{ user.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button
+                class="btn-toggle"
+                [class.deactivate]="user.isActive"
+                [class.activate]="!user.isActive"
+                (click)="toggleActive(user)"
+                [attr.aria-label]="user.isActive ? 'Deactivate' : 'Activate'"
+              >
+                {{ user.isActive ? 'Deactivate' : 'Activate' }}
+              </button>
+              <button class="btn-delete" (click)="deleteUser(user)" aria-label="Delete">🗑</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5" class="empty-cell">No delivery boys found. Add one above.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+</div>

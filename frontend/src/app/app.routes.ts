@@ -46,6 +46,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./eod-report/eod-report.component').then((m) => m.EodReportComponent),
       },
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('./users-admin/users-admin.page').then((m) => m.UsersAdminPage),
+      },
       // ── Delivery Boy routes ─────────────────────────────────────────────
       {
         path: 'sales',

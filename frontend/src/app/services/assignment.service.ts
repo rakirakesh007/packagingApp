@@ -4,8 +4,11 @@ import { Assignment } from '../models/assignment.model';
 
 export interface User {
   _id: string;
-  name: string;  // mapped from username by backend
+  username: string;
+  name: string;
+  mobile_number?: string;
   role: 'admin' | 'delivery_boy';
+  isActive: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -20,8 +23,8 @@ export class AssignmentService {
     return this.http.get<Assignment>(`/assignment/active/${deliveryBoyId}`);
   }
 
-  /** Fetch all delivery boys for assignment page dropdown. */
+  /** Fetch only ACTIVE delivery boys for assignment page dropdown. */
   getDeliveryBoys() {
-    return this.http.get<User[]>('/users?role=delivery_boy');
+    return this.http.get<User[]>('/users?role=delivery_boy&isActive=true');
   }
 }
