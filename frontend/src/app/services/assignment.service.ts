@@ -15,12 +15,21 @@ export interface User {
 export class AssignmentService {
   private http = inject(HttpClient);
 
-  createAssignment(data: { delivery_boy_id: string; items: { item_id: string; qty: number }[] }) {
+  createAssignment(data: {
+    delivery_boy_id: string;
+    items: { item_id: string; qty: number; item_name?: string; hindi_name?: string; wholesale_price_per_sheet?: number }[];
+    date?: string;
+  }) {
     return this.http.post<Assignment>('/assignment', data);
   }
 
   getActiveAssignment(deliveryBoyId: string) {
     return this.http.get<Assignment>(`/assignment/active/${deliveryBoyId}`);
+  }
+
+  /** GET /assignment/date/:id?date=YYYY-MM-DD — for any date. */
+  getAssignmentByDate(deliveryBoyId: string, date: string) {
+    return this.http.get<Assignment>(`/assignment/date/${deliveryBoyId}?date=${date}`);
   }
 
   /** Fetch only ACTIVE delivery boys for assignment page dropdown. */

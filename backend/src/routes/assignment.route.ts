@@ -1,29 +1,155 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { LoadingModel } from '../models/loading.model';
-import { InventoryModel } from '../models/inventory.model';
+import { InventoryModel } from '../models/inventory.model'; // still needed to denormalize item_name/unit_price at load time
 
 const router = Router();
 
+type LoadingItemPayload = {
+  item_id: string;
+  qty: number;
+  item_name: string;
+  hindi_name: string;
+  wholesale_price_per_sheet: number;
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function dayBounds(dateParam?: string): { start: Date; end: Date } {
+  const day = dateParam ? new Date(dateParam) : new Date();
+  const start = new Date(day); start.setHours(0,  0,  0,   0);
+  const end   = new Date(day); end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 /**
- * POST /assignment — Create a morning loading assignment for a delivery boy.
+ * POST /assignment
+ * Creates a new Loading document or appends to the existing one for the
+ * same delivery boy + date.
+ *
+ * Stock model (Option A + reserved_stock):
+ *   - total_stock  : never touched here — only decremented when a sale is recorded.
+ *   - reserved_stock: incremented here so the admin sees correct "available" stock
+ *                     (available = total_stock − reserved_stock).
+ *   On return  → reserved_stock decremented  (POST /assignment/return)
+ *   On sale    → total_stock  AND reserved_stock both decremented
+ *   This prevents double-deduction and over-assignment of the same stock.
  */
 router.post('/', async (req: Request, res: Response) => {
-  const { delivery_boy_id, items } = req.body;
+  const { delivery_boy_id, items, date } = req.body as {
+    delivery_boy_id: string;
+    items: { item_id: string; qty: number; item_name?: string; hindi_name?: string; wholesale_price_per_sheet?: number }[];
+    date?: string;
+  };
 
-  if (!delivery_boy_id || !items || !Array.isArray(items)) {
+  if (!delivery_boy_id || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ message: 'delivery_boy_id and items are required.' });
   }
 
+  const { start, end } = dayBounds(date);
+
+  // Same day + same delivery boy is now additive instead of blocked.
+  const existing = await LoadingModel.findOne({
+    delivery_boy_id,
+    date: { $gte: start, $lte: end },
+  });
+
+  // Validate all item_ids are valid ObjectIds up-front
+  for (const item of items) {
+    if (!mongoose.Types.ObjectId.isValid(item.item_id)) {
+      return res.status(400).json({ message: `Invalid item_id: ${item.item_id}` });
+    }
+  }
+
   try {
-    const assignment = await LoadingModel.create({
-      delivery_boy_id,
-      date: new Date(),
-      items: items.map((i: { item_id: string; qty: number }) => ({
-        item_id: i.item_id,
-        qty: i.qty,
-      })),
-    });
-    return res.status(201).json(assignment);
+    // Step 1: Fetch inventory to denormalize item_name, hindi_name & unit_price
+    const inventoryDocs = await InventoryModel.find({
+      _id: { $in: items.map((i) => i.item_id) },
+    }).lean();
+    const invMap = new Map(
+      inventoryDocs.map((doc) => [String(doc._id), doc])
+    );
+
+    const requestedItems = items.reduce<Map<string, LoadingItemPayload>>(
+      (acc, item) => {
+        const current = acc.get(item.item_id);
+        const inv = invMap.get(item.item_id);
+        const nextQty = (current?.qty ?? 0) + item.qty;
+        acc.set(item.item_id, {
+          item_id: item.item_id,
+          qty: nextQty,
+          item_name: inv?.item_name ?? item.item_name ?? '',
+          hindi_name: inv?.hindi_name ?? item.hindi_name ?? '',
+          wholesale_price_per_sheet: inv?.wholesale_price_per_sheet ?? item.wholesale_price_per_sheet ?? 0,
+        });
+        return acc;
+      },
+      new Map(),
+    );
+
+    const normalizedItems = Array.from(requestedItems.values());
+
+    if (existing) {
+      // Explicitly convert each Mongoose subdocument field to a plain value.
+      // Spreading Mongoose subdocs (which use defineProperty internally) can lose values.
+      const currentItems = new Map<string, LoadingItemPayload>(
+        (existing.items as any[]).map((item) => [
+          String(item.item_id),
+          {
+            item_id:                   String(item.item_id),
+            qty:                       Number(item.qty),
+            item_name:                 String(item.item_name  ?? ''),
+            hindi_name:                String(item.hindi_name ?? ''),
+            wholesale_price_per_sheet: Number(item.wholesale_price_per_sheet ?? 0),
+          },
+        ])
+      );
+
+      for (const incoming of normalizedItems) {
+        const current = currentItems.get(incoming.item_id);
+        if (current) {
+          current.qty += incoming.qty;
+          current.item_name = incoming.item_name || current.item_name;
+          current.hindi_name = incoming.hindi_name || current.hindi_name;
+          current.wholesale_price_per_sheet = incoming.wholesale_price_per_sheet || current.wholesale_price_per_sheet;
+          currentItems.set(incoming.item_id, current);
+        } else {
+          currentItems.set(incoming.item_id, incoming);
+        }
+      }
+
+      existing.set('items', Array.from(currentItems.values()));
+      existing.date = date ? new Date(date) : existing.date;
+      await existing.save();
+    } else {
+      await LoadingModel.create({
+        delivery_boy_id,
+        date: date ? new Date(date) : new Date(),
+        items: normalizedItems,
+      });
+    }
+
+    // Increment reserved_stock so admin sees correct available stock (total_stock − reserved_stock).
+    // total_stock is NOT touched — it only moves when a sale is recorded.
+    await InventoryModel.bulkWrite(
+      normalizedItems.map((i) => ({
+        updateOne: {
+          filter: { _id: i.item_id },
+          update: { $inc: { reserved_stock: i.qty } },
+        },
+      }))
+    );
+
+    const assignment = existing
+      ? await LoadingModel.findOne({
+          delivery_boy_id,
+          date: { $gte: start, $lte: end },
+        }).lean()
+      : await LoadingModel.findOne({
+          delivery_boy_id,
+          date: { $gte: start, $lte: end },
+        }).lean();
+
+    return res.status(existing ? 200 : 201).json(assignment);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });
@@ -31,27 +157,89 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /assignment/active/:deliveryBoyId — Get today's active assignment.
+ * POST /assignment/return
+ * Called when a delivery boy returns unsold items to the warehouse (same day or next day).
+ * Decrements reserved_stock only — total_stock is unchanged because it was never deducted at assignment.
+ *
+ * Body: { delivery_boy_id, items: [{ item_id, qty }], date? }
+ */
+router.post('/return', async (req: Request, res: Response) => {
+  const { delivery_boy_id, items } = req.body as {
+    delivery_boy_id: string;
+    items: { item_id: string; qty: number }[];
+  };
+
+  if (!delivery_boy_id || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'delivery_boy_id and items are required.' });
+  }
+
+  for (const item of items) {
+    if (!mongoose.Types.ObjectId.isValid(item.item_id)) {
+      return res.status(400).json({ message: `Invalid item_id: ${item.item_id}` });
+    }
+    if (!Number.isInteger(item.qty) || item.qty <= 0) {
+      return res.status(400).json({ message: `qty must be a positive integer for item_id: ${item.item_id}` });
+    }
+  }
+
+  try {
+    // Release reservation — item is physically back in the warehouse.
+    // total_stock is untouched (was never decremented at assignment time).
+    await InventoryModel.bulkWrite(
+      items.map((i) => ({
+        updateOne: {
+          filter: { _id: i.item_id, reserved_stock: { $gte: i.qty } },
+          update: { $inc: { reserved_stock: -i.qty } },
+        },
+      }))
+    );
+
+    return res.status(200).json({ message: 'Stock return recorded. Reserved stock released.' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /assignment/active/:deliveryBoyId
+ * Returns today's assignment (no populate needed — fields are denormalized).
  */
 router.get('/active/:deliveryBoyId', async (req: Request, res: Response) => {
   try {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const end = new Date(today.setHours(23, 59, 59, 999));
-
+    const { start, end } = dayBounds();
     const assignment = await LoadingModel.findOne({
       delivery_boy_id: req.params.deliveryBoyId,
       date: { $gte: start, $lte: end },
-    }).populate('items.item_id');
+    }).lean();
 
     if (!assignment) {
       return res.status(404).json({ message: 'No active assignment found for today.' });
     }
-
     return res.json(assignment);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({ message });
+    return res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+/**
+ * GET /assignment/date/:deliveryBoyId?date=YYYY-MM-DD
+ * Returns the assignment for any given date (used by delivery boy cart).
+ */
+router.get('/date/:deliveryBoyId', async (req: Request, res: Response) => {
+  try {
+    const { start, end } = dayBounds(req.query['date'] as string | undefined);
+    const assignment = await LoadingModel.findOne({
+      delivery_boy_id: req.params.deliveryBoyId,
+      date: { $gte: start, $lte: end },
+    }).lean();
+
+    if (!assignment) {
+      return res.status(404).json({ message: 'No assignment found for this date.' });
+    }
+    return res.json(assignment);
+  } catch (error) {
+    return res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 

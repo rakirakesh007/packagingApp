@@ -3,9 +3,21 @@ export interface Sale {
   customer_name?: string;
   shop_name?: string;
   shop_id?: string;
-  items: { item_id: string; qty: number; price: number }[];
+  items: {
+    item_id: string;
+    item_name?: string;
+    hindi_name?: string;
+    description?: string;
+    sheets_sold: number;
+    wholesale_price_per_sheet: number;
+    discount_amount: number;
+    final_price: number;
+    profit: number;
+  }[];
   total_amount: number;
-  payment_mode: 'cash' | 'online';
+  total_discount: number;
+  total_profit: number;
+  payment_mode: 'cash' | 'online' | 'pending';
   delivery_boy_id: string;
   timestamp: string;
 }

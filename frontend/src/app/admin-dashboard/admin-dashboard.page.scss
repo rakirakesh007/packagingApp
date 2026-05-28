@@ -1,0 +1,185 @@
+:host { display: block; }
+
+.dash-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+.dash-title { font-size: 1.6rem; font-weight: 800; color: #111827; margin: 0; }
+.dash-sub    { font-size: 0.85rem; color: #6b7280; margin-top: 2px; }
+
+.btn-refresh {
+  padding: 0.4rem 0.9rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: white;
+  cursor: pointer;
+  &:hover { background: #f8fafc; }
+}
+
+// KPI
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  @media (min-width: 768px) { grid-template-columns: repeat(4, 1fr); }
+}
+.kpi-card {
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1.5px solid transparent;
+  &.green  { background: #f0fdf4; border-color: #86efac; }
+  &.blue   { background: #eff6ff; border-color: #93c5fd; }
+  &.orange { background: #fff7ed; border-color: #fdba74; }
+  &.purple { background: #faf5ff; border-color: #c4b5fd; }
+}
+.kpi-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.1;
+}
+
+// Quick actions
+.section-wrap { margin-bottom: 1.5rem; }
+.section-title { font-size: 1rem; font-weight: 700; color: #374151; margin-bottom: 0.6rem; }
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  @media (min-width: 768px) { grid-template-columns: repeat(4, 1fr); }
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  background: #111827;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+  &:hover { opacity: 0.85; }
+}
+
+// Two-column
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  @media (min-width: 900px) { grid-template-columns: 1fr 1fr; }
+}
+
+// Cards
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.card-title { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0 0 0.75rem; }
+.card-head .card-title { margin-bottom: 0; }
+
+// Products
+.product-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  &:last-child { border: none; }
+}
+.product-name {
+  width: 130px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.bar-wrap {
+  flex: 1;
+  background: #f1f5f9;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: #f97316;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.product-qty {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+// Delivery boys
+.boy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  &:last-child { border: none; }
+}
+.boy-name  { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0; }
+.boy-sub   { font-size: 0.78rem; color: #94a3b8; margin: 2px 0 0; }
+.boy-cash  { font-size: 0.95rem; font-weight: 700; color: #16a34a; }
+
+.empty-msg { color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 1rem 0; }
+.link-small { font-size: 0.8rem; font-weight: 600; color: #2563eb; text-decoration: none; &:hover { text-decoration: underline; } }
+
+// Low stock
+.alert-card { border-color: #fbbf24; background: #fffbeb; }
+.alert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.alert-chip {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  background: #fef3c7;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.alert-name { font-weight: 600; }
+.alert-qty  { font-weight: 700; color: #d97706; }
+

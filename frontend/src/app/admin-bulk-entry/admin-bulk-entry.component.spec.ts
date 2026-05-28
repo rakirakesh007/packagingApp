@@ -29,12 +29,12 @@ describe('AdminBulkEntryComponent', () => {
   });
 
   it('should calculate grand total correctly', () => {
-    component.rows.at(0).patchValue({ quantity: 2, price: 50 });
+    component.rows.at(0).patchValue({ sheets_sold: 2, wholesale_price_per_sheet: 50, discount_amount: 0 });
     expect(component.grandTotal()).toBe(100);
   });
 
   it('should calculate total profit correctly', () => {
-    component.rows.at(0).patchValue({ quantity: 2, price: 50, purchasePrice: 30 });
+    component.rows.at(0).patchValue({ sheets_sold: 2, wholesale_price_per_sheet: 50, discount_amount: 0, production_cost_per_sheet: 30 });
     expect(component.totalProfit()).toBe(40);
   });
 });

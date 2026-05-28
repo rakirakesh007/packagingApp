@@ -1,0 +1,234 @@
+<div class="p-4 max-w-[1600px] mx-auto">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Marketing Dashboard</h1>
+      <p class="text-sm text-gray-500">WhatsApp broadcasts, reusable templates, and shop targeting in one place.</p>
+    </div>
+
+    <div class="flex items-end gap-3 flex-wrap">
+      <label class="block">
+        <span class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Month / Year</span>
+        <input
+          type="month"
+          class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm"
+          [ngModel]="selectedMonth()"
+          (ngModelChange)="onMonthChange($event)"
+        />
+      </label>
+      <button (click)="refreshOverview()" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow hover:bg-black">
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="metric-card bg-emerald-50 border-emerald-200">
+      <span class="metric-label">Total Shops</span>
+      <span class="metric-value text-emerald-700">{{ totalShopsLabel() }}</span>
+    </div>
+    <div class="metric-card bg-sky-50 border-sky-200">
+      <span class="metric-label">Broadcast Targets</span>
+      <span class="metric-value text-sky-700">{{ totalBroadcastTargetsLabel() }}</span>
+    </div>
+    <div class="metric-card bg-amber-50 border-amber-200">
+      <span class="metric-label">Active Shops</span>
+      <span class="metric-value text-amber-700">{{ activeShopsLabel() }}</span>
+    </div>
+    <div class="metric-card bg-rose-50 border-rose-200">
+      <span class="metric-label">Monthly Sales</span>
+      <span class="metric-value text-rose-700">₹{{ totalMonthlySalesLabel() | number:'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
+    <button class="tab-btn" [class.active]="activeTab() === 'broadcast'" (click)="setTab('broadcast')">Broadcast</button>
+    <button class="tab-btn" [class.active]="activeTab() === 'templates'" (click)="setTab('templates')">Templates</button>
+    <button class="tab-btn" [class.active]="activeTab() === 'shops'" (click)="setTab('shops')">Shop Directory</button>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-5">
+    <section class="space-y-5">
+      @if (activeTab() === 'broadcast') {
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4">
+            <div>
+              <h2 class="text-xl font-bold">Broadcast Queue</h2>
+              <p class="text-sm text-gray-500">Pick a template, review the message, and open WhatsApp for each shop.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                class="border rounded-lg px-3 py-2 text-sm w-64 max-w-full"
+                placeholder="Search shop by name, mobile, or address"
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchChanged($event)"
+              />
+              <button class="text-sm px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold" (click)="clearShopFilter()">Clear</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="panel-box">
+              <span class="panel-label">Current Template</span>
+              <h3 class="text-lg font-bold mt-1">{{ selectedTemplateTitle() }}</h3>
+              <p class="text-sm text-gray-500 mt-1">{{ selectedTemplateCategoryLabel() }}</p>
+            </div>
+            <div class="panel-box">
+              <span class="panel-label">Current Shop</span>
+              <h3 class="text-lg font-bold mt-1">{{ currentShop()?.name || 'No shop selected' }}</h3>
+              <p class="text-sm text-gray-500 mt-1">{{ currentShop()?.mobile || 'Search to start' }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
+            <div class="overflow-x-auto rounded-xl border border-gray-200">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+                  <tr>
+                    <th class="px-4 py-3 text-left">Shop</th>
+                    <th class="px-4 py-3 text-left">Mobile</th>
+                    <th class="px-4 py-3 text-right">Orders</th>
+                    <th class="px-4 py-3 text-right">Monthly Sales</th>
+                    <th class="px-4 py-3 text-left">Last Order</th>
+                    <th class="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  @for (shop of filteredShops(); track shop.shopId; let i = $index) {
+                    <tr class="hover:bg-gray-50" [class.bg-sky-50]="currentShop()?.shopId === shop.shopId">
+                      <td class="px-4 py-3 font-medium text-gray-900">
+                        <div>{{ shop.name }}</div>
+                        <div class="text-xs text-gray-500">{{ shop.address || 'No address' }}</div>
+                      </td>
+                      <td class="px-4 py-3">{{ shop.mobile }}</td>
+                      <td class="px-4 py-3 text-right">{{ shop.totalOrdersCount }}</td>
+                      <td class="px-4 py-3 text-right">₹{{ shop.monthlySalesTotal | number:'1.0-0' }}</td>
+                      <td class="px-4 py-3">{{ formatLastOrder(shop.lastOrderAt) }}</td>
+                      <td class="px-4 py-3 text-right">
+                        <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold mr-2" (click)="selectShop(i)">Select</button>
+                        <button class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold" (click)="sendWhatsApp(shop)">WhatsApp</button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="px-4 py-8 text-center text-gray-400">No shops match your search.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="bg-gray-50 rounded-2xl border border-gray-200 p-4 space-y-4">
+              <div>
+                <h3 class="text-lg font-bold">Message Preview</h3>
+                <p class="text-sm text-gray-500">Placeholders like [[name]] and [[monthly_amount]] are replaced automatically.</p>
+              </div>
+              <div class="preview-box whitespace-pre-wrap">{{ messagePreview() }}</div>
+              <div class="flex gap-2 flex-wrap">
+                <button class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold" (click)="sendCurrentAndNext()">Send & Next</button>
+                <button class="px-4 py-2 rounded-lg bg-gray-200 text-gray-900 text-sm font-semibold" (click)="previousShop()">Previous</button>
+                <button class="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold" (click)="nextShop()">Next</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeTab() === 'shops') {
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 overflow-hidden">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-xl font-bold">Shop Directory</h2>
+              <p class="text-sm text-gray-500">Targeted audience for repeat orders and campaign follow-ups.</p>
+            </div>
+            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">{{ filteredShops().length }} visible</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+                <tr>
+                  <th class="px-4 py-3 text-left">Shop</th>
+                  <th class="px-4 py-3 text-left">Mobile</th>
+                  <th class="px-4 py-3 text-left">Address</th>
+                  <th class="px-4 py-3 text-right">Total Orders</th>
+                  <th class="px-4 py-3 text-right">Monthly Sales</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (shop of filteredShops(); track shop.shopId) {
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ shop.name }}</td>
+                    <td class="px-4 py-3">{{ shop.mobile }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ shop.address || '—' }}</td>
+                    <td class="px-4 py-3 text-right">{{ shop.totalOrdersCount }}</td>
+                    <td class="px-4 py-3 text-right">₹{{ shop.monthlySalesTotal | number:'1.0-0' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-400">No shops available.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </section>
+
+    <aside class="space-y-5">
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-bold">Template Manager</h2>
+            <p class="text-sm text-gray-500">Create follow-up, festival, payment, or offer templates.</p>
+          </div>
+          <button class="text-sm px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold" (click)="resetTemplateForm()">New</button>
+        </div>
+
+        <form class="space-y-3" (ngSubmit)="saveTemplate()">
+          <input class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Template title" [(ngModel)]="templateTitle" name="templateTitle" />
+          <select class="w-full border rounded-lg px-3 py-2 text-sm bg-white" [(ngModel)]="templateCategory" name="templateCategory">
+            <option value="general">General</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="offer">Offer</option>
+            <option value="festival">Festival</option>
+            <option value="payment">Payment</option>
+          </select>
+          <textarea class="w-full border rounded-lg px-3 py-2 text-sm min-h-52" placeholder="Message body" [(ngModel)]="templateBody" name="templateBody"></textarea>
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" [(ngModel)]="templateIsActive" name="templateIsActive" />
+            Active template
+          </label>
+          <button type="submit" class="w-full rounded-lg bg-gray-900 text-white py-2.5 text-sm font-semibold hover:bg-black">
+            {{ templateId ? 'Update Template' : 'Save Template' }}
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <h3 class="text-lg font-bold mb-3">Saved Templates</h3>
+        <div class="space-y-3 max-h-[560px] overflow-auto pr-1">
+          @for (template of overview()?.templates || []; track template._id) {
+            <div class="rounded-xl border p-3" [class.border-gray-300]="selectedTemplateId() === template._id" [class.bg-gray-50]="selectedTemplateId() === template._id">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h4 class="font-semibold text-gray-900">{{ template.title }}</h4>
+                  <p class="text-xs text-gray-500 uppercase tracking-wide">{{ template.category }} · {{ template.isActive ? 'Active' : 'Inactive' }}</p>
+                </div>
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">{{ template.usageCount }} uses</span>
+              </div>
+              <p class="text-sm text-gray-600 mt-2 whitespace-pre-wrap line-clamp-6">{{ template.body }}</p>
+              <div class="flex gap-2 mt-3 flex-wrap">
+                <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold" (click)="setSelectedTemplate(template)">Edit</button>
+                <button class="px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold" (click)="useTemplateForPreview(template)">Use</button>
+                <button class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold" (click)="deleteTemplate(template)">Delete</button>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-sm text-gray-400 text-center py-8">No templates saved yet.</p>
+          }
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

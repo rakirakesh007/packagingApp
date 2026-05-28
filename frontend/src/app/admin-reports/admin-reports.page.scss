@@ -1,0 +1,50 @@
+:host { display: block; }
+
+.tab-btn {
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 0.9rem;
+  &.active { background: #111827; color: #fff; }
+}
+
+.view-toggle {
+  display: flex;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  button {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f9fafb;
+    transition: all 0.15s;
+    &.active { background: #111827; color: #fff; }
+  }
+}
+
+.report-card {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 110px;
+}
+.report-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  font-weight: 700;
+}
+.report-value {
+  margin-top: auto;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  font-weight: 800;
+}

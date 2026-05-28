@@ -1,5 +1,6 @@
 <div class="p-4">
-  <h1 class="text-2xl font-bold mb-4">Admin Bulk Entry</h1>
+  <h1 class="text-2xl font-bold mb-1">Admin Bulk Entry</h1>
+  <p class="text-sm text-gray-500 mb-4">Enter yesterday's paper sales in bulk. Item prices auto-fill from inventory.</p>
 
   @if (submitSuccess()) {
     <div class="mb-4 p-3 bg-green-100 text-green-800 border border-green-300 rounded">
@@ -12,11 +13,13 @@
       <table class="w-full border-collapse border border-gray-300 text-sm">
         <thead class="bg-gray-100">
           <tr>
-            <th class="border border-gray-300 px-3 py-2">Shop Name</th>
-            <th class="border border-gray-300 px-3 py-2">Item</th>
-            <th class="border border-gray-300 px-3 py-2">Qty</th>
-            <th class="border border-gray-300 px-3 py-2">Sale Price</th>
-            <th class="border border-gray-300 px-3 py-2">Purchase Price</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Shop Name *</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Mobile</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Item *</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Hindi Name</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Wholesale/Sheet</th>
+            <th class="border border-gray-300 px-3 py-2">Sheets</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Discount/Sheet</th>
             <th class="border border-gray-300 px-3 py-2">Subtotal</th>
             <th class="border border-gray-300 px-3 py-2">Profit</th>
             <th class="border border-gray-300 px-3 py-2"></th>
@@ -25,38 +28,116 @@
         <tbody>
           @for (row of rows.controls; track $index; let i = $index) {
             <tr [formGroup]="row" class="bulk-row">
+
+              <!-- Shop Name -->
               <td class="border border-gray-300 p-1">
-                <input formControlName="shopName" class="w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded" placeholder="Shop name" />
+                <input
+                  formControlName="shopName"
+                  class="shop-name-input w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                  placeholder="Shop name"
+                />
               </td>
+
+              <!-- Mobile (optional) -->
               <td class="border border-gray-300 p-1">
-                <input formControlName="item" class="w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded" placeholder="Item name" />
+                <input
+                  formControlName="shopMobile"
+                  type="tel"
+                  maxlength="10"
+                  class="w-28 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                  placeholder="Mobile"
+                />
               </td>
+
+              <!-- Item autocomplete -->
+              <td class="border border-gray-300 p-1 min-w-[180px]">
+                <mat-autocomplete
+                  #auto="matAutocomplete"
+                  [displayWith]="displayFn"
+                  (optionSelected)="selectItem($event.option.value, i)"
+                >
+                  @for (opt of (filteredOptions()[i] || []); track opt.id) {
+                    <mat-option [value]="opt">
+                      {{ opt.hindi_name || opt.item_name }}
+                      @if (opt.hindi_name) {
+                        <span class="text-xs text-gray-400 ml-1">({{ opt.item_name }})</span>
+                      }
+                      <span class="text-xs text-gray-400 ml-2">₹{{ opt.wholesale_price_per_sheet }}/sheet</span>
+                    </mat-option>
+                  }
+                </mat-autocomplete>
+                <input
+                  formControlName="itemSearch"
+                  class="w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                  placeholder="Search item…"
+                  [matAutocomplete]="auto"
+                  (input)="filterItems($any($event.target).value, i)"
+                />
+              </td>
+
+              <!-- Hindi Name -->
+              <td class="border border-gray-300 p-1 min-w-[160px]">
+                <input
+                  formControlName="itemHindiName"
+                  class="w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded bg-gray-50"
+                  placeholder="Hindi name"
+                  readonly
+                />
+              </td>
+
+              <!-- Wholesale Price (readonly) -->
               <td class="border border-gray-300 p-1">
-                <input formControlName="quantity" type="number" min="1" class="w-20 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded" />
+                <input
+                  formControlName="wholesale_price_per_sheet"
+                  type="number" min="0"
+                  class="w-28 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded bg-gray-50"
+                  readonly
+                />
               </td>
+
+              <!-- Sheets Sold -->
               <td class="border border-gray-300 p-1">
-                <input formControlName="price" type="number" min="0" class="w-24 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded" />
+                <input
+                  formControlName="sheets_sold"
+                  type="number" min="1"
+                  class="w-16 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                />
               </td>
+
+              <!-- Discount / Sheet -->
               <td class="border border-gray-300 p-1">
-                <input formControlName="purchasePrice" type="number" min="0" class="w-24 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded" />
+                <input
+                  formControlName="discount_amount"
+                  type="number" min="0"
+                  class="w-24 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                  placeholder="0"
+                />
               </td>
+
+              <!-- Subtotal -->
               <td class="border border-gray-300 px-3 py-1 text-right font-mono">
-                {{ (row.value.quantity || 0) * (row.value.price || 0) | number:'1.0-0' }}
+                {{ (row.value.sheets_sold || 0) * ((row.value.wholesale_price_per_sheet || 0) - (row.value.discount_amount || 0)) | number:'1.0-0' }}
               </td>
+
+              <!-- Profit -->
               <td class="border border-gray-300 px-3 py-1 text-right font-mono"
-                  [class.text-green-600]="(row.value.quantity||0)*((row.value.price||0)-(row.value.purchasePrice||0)) > 0"
-                  [class.text-red-500]="(row.value.quantity||0)*((row.value.price||0)-(row.value.purchasePrice||0)) < 0">
-                {{ (row.value.quantity || 0) * ((row.value.price || 0) - (row.value.purchasePrice || 0)) | number:'1.0-0' }}
+                  [class.text-green-600]="(row.value.sheets_sold||0)*((row.value.wholesale_price_per_sheet||0)-(row.value.discount_amount||0)-(row.value.production_cost_per_sheet||0)) > 0"
+                  [class.text-red-500]="(row.value.sheets_sold||0)*((row.value.wholesale_price_per_sheet||0)-(row.value.discount_amount||0)-(row.value.production_cost_per_sheet||0)) < 0">
+                {{ (row.value.sheets_sold || 0) * ((row.value.wholesale_price_per_sheet || 0) - (row.value.discount_amount || 0) - (row.value.production_cost_per_sheet || 0)) | number:'1.0-0' }}
               </td>
+
+              <!-- Remove -->
               <td class="border border-gray-300 px-2 py-1 text-center">
-                <button type="button" (click)="removeRow(i)" class="text-red-400 hover:text-red-600 font-bold text-lg leading-none" aria-label="Remove row">&times;</button>
+                <button type="button" (click)="removeRow(i)"
+                  class="text-red-400 hover:text-red-600 font-bold text-lg leading-none"
+                  aria-label="Remove row">&times;</button>
               </td>
             </tr>
           }
         </tbody>
         <tfoot class="bg-gray-50 font-bold">
           <tr>
-            <td colspan="5" class="border border-gray-300 px-3 py-2 text-right">Totals:</td>
+            <td colspan="9" class="border border-gray-300 px-3 py-2 text-right">Totals:</td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono">&#x20B9;{{ grandTotal() | number:'1.0-0' }}</td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono text-green-700">&#x20B9;{{ totalProfit() | number:'1.0-0' }}</td>
             <td class="border border-gray-300"></td>
@@ -66,14 +147,14 @@
     </div>
 
     <div class="flex items-center gap-3 mt-4">
-      <button type="button" (click)="addRow()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded">
+      <button type="button" (click)="addRow()"
+        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded">
         + Add Row
       </button>
       <button
         type="submit"
         [disabled]="bulkEntryForm.invalid"
-        class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-6 py-2 rounded"
-      >
+        class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-6 py-2 rounded">
         Save All Entries
       </button>
     </div>

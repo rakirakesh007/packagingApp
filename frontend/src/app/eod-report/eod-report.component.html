@@ -13,7 +13,12 @@
     <tbody>
       @for (item of reportData().closingStock; track item.item_id) {
         <tr [class.bg-red-50]="item.remaining < 0">
-          <td class="border border-gray-300 px-4 py-2">{{ item.item_name }}</td>
+          <td class="border border-gray-300 px-4 py-2">
+            {{ item.hindi_name || item.item_name }}
+            @if (item.hindi_name) {
+              <span class="block text-xs text-gray-400">({{ item.item_name }})</span>
+            }
+          </td>
           <td class="border border-gray-300 px-4 py-2 text-right">{{ item.opening }}</td>
           <td class="border border-gray-300 px-4 py-2 text-right">{{ item.sold }}</td>
           <td class="border border-gray-300 px-4 py-2 text-right font-bold"

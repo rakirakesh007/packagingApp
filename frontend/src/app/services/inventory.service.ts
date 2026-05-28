@@ -36,6 +36,16 @@ export class InventoryService {
     );
   }
 
+  updateProduct(id: string, product: Partial<InventoryItem>) {
+    return this.http.patch<RawInventoryItem>(`/inventory/${id}`, product).pipe(
+      map(this.mapItem)
+    );
+  }
+
+  deleteProduct(id: string) {
+    return this.http.delete<{ message: string }>(`/inventory/${id}`);
+  }
+
   /** POST /inventory — add a new product (admin only). */
   addProduct(product: Partial<InventoryItem>) {
     return this.http.post<RawInventoryItem>('/inventory', product).pipe(

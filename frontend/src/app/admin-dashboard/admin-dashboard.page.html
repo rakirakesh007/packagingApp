@@ -1,55 +1,103 @@
-<div class="p-4">
-  <h1 class="text-2xl font-bold mb-6">Admin Dashboard</h1>
+<div class="dash-page">
 
-  <!-- Monthly Summary -->
-  <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-    <div class="bg-green-100 p-4 rounded shadow">
-      <h3 class="text-lg font-bold">Total Revenue</h3>
-      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().totalSales }}</p>
+  <!-- Header -->
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Dashboard</h1>
+      <p class="dash-sub">{{ todayLabel }}</p>
     </div>
-    <div class="bg-red-100 p-4 rounded shadow">
-      <h3 class="text-lg font-bold">Total Expenses</h3>
-      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().totalExpenses }}</p>
-    </div>
-    <div class="bg-blue-100 p-4 rounded shadow">
-      <h3 class="text-lg font-bold">Net Profit</h3>
-      <p class="text-2xl font-mono">&#x20B9;{{ monthlySummary().netProfit }}</p>
-    </div>
-  </section>
+    <button class="btn-refresh" (click)="loadDashboard()">&#8635; Refresh</button>
+  </div>
 
-  <!-- EOD Table -->
-  <section>
-    <div class="flex items-center justify-between mb-2">
-      <h2 class="text-xl font-bold">EOD Summary</h2>
-      <button
-        (click)="exportToCSV()"
-        class="bg-gray-700 text-white text-sm px-3 py-1 rounded hover:bg-gray-800"
-        aria-label="Export to CSV"
-      >Export CSV</button>
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card green">
+      <span class="kpi-label">Today's Revenue</span>
+      <span class="kpi-value">&#x20B9;{{ todayStats().totalRevenue | number:'1.0-0' }}</span>
     </div>
-    <table class="table-auto w-full border-collapse border border-gray-300 text-sm">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border border-gray-300 px-4 py-2 text-left">Delivery Boy</th>
-          <th class="border border-gray-300 px-4 py-2 text-right">Opening Stock</th>
-          <th class="border border-gray-300 px-4 py-2 text-right">Sold</th>
-          <th class="border border-gray-300 px-4 py-2 text-right">Remaining</th>
-          <th class="border border-gray-300 px-4 py-2 text-right">Cash Collected</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (summary of eodSummary(); track summary.delivery_boy_id) {
-          <tr class="hover:bg-gray-50">
-            <td class="border border-gray-300 px-4 py-2">{{ summary.delivery_boy_id }}</td>
-            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.openingStock }}</td>
-            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.sold }}</td>
-            <td class="border border-gray-300 px-4 py-2 text-right">{{ summary.remaining }}</td>
-            <td class="border border-gray-300 px-4 py-2 text-right font-mono">&#x20B9;{{ summary.cashCollected }}</td>
-          </tr>
-        } @empty {
-          <tr><td colspan="5" class="border px-4 py-4 text-center text-gray-400">No data yet.</td></tr>
+    <div class="kpi-card blue">
+      <span class="kpi-label">Orders Today</span>
+      <span class="kpi-value">{{ todayStats().totalSales }}</span>
+    </div>
+    <div class="kpi-card orange">
+      <span class="kpi-label">Cash Collected</span>
+      <span class="kpi-value">&#x20B9;{{ todayStats().cashCollected | number:'1.0-0' }}</span>
+    </div>
+    <div class="kpi-card purple">
+      <span class="kpi-label">Today's Profit</span>
+      <span class="kpi-value">&#x20B9;{{ todayStats().totalProfit | number:'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section-wrap">
+    <h2 class="section-title">Quick Actions</h2>
+    <div class="action-grid">
+      <a routerLink="/app/assignment" class="action-btn">&#x1F69A; Assign Task</a>
+      <a routerLink="/app/bulk-entry" class="action-btn">&#x1F4DD; Bulk Entry</a>
+      <a routerLink="/app/inventory"  class="action-btn">&#x1F4E6; Update Inventory</a>
+      <a routerLink="/app/reports"    class="action-btn">&#x1F4CA; View Reports</a>
+    </div>
+  </div>
+
+  <!-- Two-column section -->
+  <div class="two-col">
+
+    <!-- Top 5 Products -->
+    <div class="card">
+      <h2 class="card-title">&#x1F525; Best-Selling Today</h2>
+      @for (item of todayStats().topItems; track item.item_id) {
+        <div class="product-row">
+          <div class="product-name">
+            {{ item.hindi_name || item.item_name }}
+            @if (item.hindi_name) {
+              <span class="text-xs text-gray-400">({{ item.item_name }})</span>
+            }
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" [style.width.%]="barWidth(item.sheets_sold)"></div>
+          </div>
+          <span class="product-qty">{{ item.sheets_sold }} sheets</span>
+        </div>
+      } @empty {
+        <p class="empty-msg">No sales yet today.</p>
+      }
+    </div>
+
+    <!-- Today's Delivery Boys -->
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title">&#x1F69A; Delivery Boys Today</h2>
+        <a routerLink="/app/reports" class="link-small">Full Report &#8594;</a>
+      </div>
+      @for (row of eodSummary(); track row.delivery_boy_id) {
+        <div class="boy-row">
+          <div>
+            <p class="boy-name">{{ row.delivery_boy_name }}</p>
+            <p class="boy-sub">{{ row.sold }} / {{ row.openingStock }} sheets sold</p>
+          </div>
+          <span class="boy-cash">&#x20B9;{{ row.cashCollected | number:'1.0-0' }}</span>
+        </div>
+      } @empty {
+        <p class="empty-msg">No assignments today.</p>
+      }
+    </div>
+  </div>
+
+  <!-- Low Stock Alerts -->
+  @if (lowStock().length > 0) {
+    <div class="card alert-card">
+      <h2 class="card-title">&#x26A0;&#xFE0F; Low Stock Alerts</h2>
+      <div class="alert-grid">
+        @for (item of lowStock(); track item.id) {
+          <div class="alert-chip">
+            <span class="alert-name">{{ item.hindi_name || item.item_name }}</span>
+            <span class="alert-qty">{{ item.total_stock - (item.reserved_stock ?? 0) }} left</span>
+          </div>
         }
-      </tbody>
-    </table>
-  </section>
+      </div>
+      <a routerLink="/app/inventory" class="link-small" style="display:block;margin-top:0.5rem">Manage Inventory &#8594;</a>
+    </div>
+  }
+
 </div>

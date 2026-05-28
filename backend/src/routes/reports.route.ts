@@ -7,9 +7,9 @@ router.get('/eod/:delivery_boy_id', async (req, res) => {
   const { delivery_boy_id } = req.params;
 
   try {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const end = new Date(today.setHours(23, 59, 59, 999));
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     // Fetch Opening Stock
     const loading = await LoadingModel.findOne({
@@ -25,8 +25,10 @@ router.get('/eod/:delivery_boy_id', async (req, res) => {
     }
 
     const openingStock = loading.items.map((item) => ({
-      item_id: item.item_id,
-      qty: item.qty,
+      item_id:    item.item_id,
+      item_name:  (item as any).item_name  || '',
+      hindi_name: (item as any).hindi_name || '',
+      qty:        item.qty,
     }));
 
     // Fetch Sales
@@ -43,7 +45,7 @@ router.get('/eod/:delivery_boy_id', async (req, res) => {
       sale.items.forEach((item) => {
         const key = item.item_id.toString();
         if (!soldItems[key]) soldItems[key] = 0;
-        soldItems[key] += item.qty;
+        soldItems[key] += (item as any).sheets_sold ?? 0;
       });
     });
 
@@ -51,10 +53,12 @@ router.get('/eod/:delivery_boy_id', async (req, res) => {
     const closingStock = openingStock.map((item) => {
       const key = item.item_id.toString();
       return {
-        item_id: item.item_id,
-        opening: item.qty,
-        sold: soldItems[key] || 0,
-        remaining: item.qty - (soldItems[key] || 0),
+        item_id:    item.item_id,
+        item_name:  (item as any).item_name  || '',
+        hindi_name: (item as any).hindi_name || '',
+        opening:    item.qty,
+        sold:       soldItems[key] || 0,
+        remaining:  item.qty - (soldItems[key] || 0),
       };
     });
 

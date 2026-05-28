@@ -20,6 +20,11 @@ export const routes: Routes = [
           import('./admin-dashboard/admin-dashboard.page').then((m) => m.AdminDashboardPage),
       },
       {
+        path: 'marketing',
+        loadComponent: () =>
+          import('./marketing-dashboard/marketing-dashboard.page').then((m) => m.MarketingDashboardPage),
+      },
+      {
         path: 'inventory',
         loadComponent: () =>
           import('./inventory/inventory.page').then((m) => m.InventoryPage),
@@ -45,6 +50,11 @@ export const routes: Routes = [
         path: 'eod-report',
         loadComponent: () =>
           import('./eod-report/eod-report.component').then((m) => m.EodReportComponent),
+      },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./admin-reports/admin-reports.page').then((m) => m.AdminReportsPage),
       },
       {
         path: 'users',

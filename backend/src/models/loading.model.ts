@@ -2,20 +2,15 @@ import { InferSchemaType, Schema, Types, model } from 'mongoose';
 
 const loadingItemSchema = new Schema(
   {
-    item_id: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      ref: 'Inventory',
-    },
-    qty: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
+    item_id:    { type: Schema.Types.ObjectId, required: true, ref: 'Inventory' },
+    qty:        { type: Number, required: true, min: 1 },
+    // Denormalized so the delivery-boy cart doesn't need a second populate call
+    item_name:  { type: String, default: '' },
+    hindi_name: { type: String, default: '' },
+    // wholesale_price_per_sheet: denormalized from Inventory.wholesale_price_per_sheet at assignment time
+    wholesale_price_per_sheet: { type: Number, default: 0 },
   },
-  {
-    _id: false,
-  },
+  { _id: false }
 );
 
 const loadingSchema = new Schema(

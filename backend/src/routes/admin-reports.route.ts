@@ -2,20 +2,118 @@ import { Router, Request, Response } from 'express';
 import { SaleModel } from '../models/sale.model';
 import { LoadingModel } from '../models/loading.model';
 import { ExpenseModel } from '../models/expense.model';
+import { InventoryModel } from '../models/inventory.model';
+import { UserModel } from '../models/user.model';
 
 const router = Router();
 
+function resolveMonthRange(month?: string, year?: string): { start: Date; end: Date; monthNumber: number; yearNumber: number } {
+  const now = new Date();
+  const monthNumber = month ? Math.max(1, Math.min(12, Number(month))) - 1 : now.getMonth();
+  const yearNumber = year ? Number(year) : now.getFullYear();
+  const start = new Date(yearNumber, monthNumber, 1, 0, 0, 0, 0);
+  const end = new Date(yearNumber, monthNumber + 1, 0, 23, 59, 59, 999);
+  return { start, end, monthNumber, yearNumber };
+}
+
 /**
- * GET /admin/reports/eod — EOD summary across all delivery boys.
- * Returns: delivery_boy_id, openingStock, sold, remaining, cashCollected.
+ * GET /admin/reports/today — live KPIs for the dashboard.
+ */
+router.get('/today', async (_req: Request, res: Response) => {
+  try {
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const [sales, loadings] = await Promise.all([
+      SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
+      LoadingModel.find({ date: { $gte: start, $lte: end } }),
+    ]);
+
+    const totalRevenue  = sales.reduce((s, sale) => s + sale.total_amount, 0);
+    const totalSales    = sales.length;
+    const totalProfit   = sales.reduce((s, sale) => s + ((sale as any).total_profit ?? 0), 0);
+    const cashCollected = sales.filter(s => s.payment_mode === 'cash').reduce((s, sale) => s + sale.total_amount, 0);
+    const activeBoys    = loadings.length;
+
+    const itemMap = new Map<string, { item_id: string; item_name: string; hindi_name: string; sheets_sold: number; revenue: number }>();
+    sales.forEach(sale => {
+      sale.items.forEach(item => {
+        const key = String(item.item_id);
+        const cur = itemMap.get(key) ?? { item_id: key, item_name: (item as any).item_name || '', hindi_name: (item as any).hindi_name || '', sheets_sold: 0, revenue: 0 };
+        cur.sheets_sold += (item as any).sheets_sold ?? 0;
+        cur.revenue     += (item as any).final_price  ?? 0;
+        itemMap.set(key, cur);
+      });
+    });
+    const topItems = [...itemMap.values()].sort((a, b) => b.sheets_sold - a.sheets_sold).slice(0, 5);
+
+    return res.json({ totalRevenue, totalSales, totalProfit, cashCollected, activeBoys, topItems });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /admin/reports/eod-by-product — today stock grouped by item.
+ */
+router.get('/eod-by-product', async (_req: Request, res: Response) => {
+  try {
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const [sales, loadings] = await Promise.all([
+      SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
+      LoadingModel.find({ date: { $gte: start, $lte: end } }),
+    ]);
+
+    const openingMap = new Map<string, { item_id: string; item_name: string; hindi_name: string; opening: number }>();
+    loadings.forEach(loading => {
+      loading.items.forEach(item => {
+        const key = String(item.item_id);
+        const cur = openingMap.get(key) ?? { item_id: key, item_name: (item as any).item_name || '', hindi_name: (item as any).hindi_name || '', opening: 0 };
+        cur.opening += item.qty;
+        openingMap.set(key, cur);
+      });
+    });
+
+    const soldMap = new Map<string, number>();
+    sales.forEach(sale => {
+      sale.items.forEach(item => {
+        const key = String(item.item_id);
+        soldMap.set(key, (soldMap.get(key) ?? 0) + ((item as any).sheets_sold ?? 0));
+      });
+    });
+
+    const result = [...openingMap.values()].map(item => ({
+      ...item,
+      sold:      soldMap.get(item.item_id) ?? 0,
+      remaining: item.opening - (soldMap.get(item.item_id) ?? 0),
+    })).sort((a, b) => b.sold - a.sold);
+
+    return res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /admin/reports/eod — EOD summary across all delivery boys (with names).
  */
 router.get('/eod', async (_req: Request, res: Response) => {
   try {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const end = new Date(today.setHours(23, 59, 59, 999));
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     const loadings = await LoadingModel.find({ date: { $gte: start, $lte: end } });
+
+    const deliveryBoyIds = loadings.map(l => String(l.delivery_boy_id));
+    const users = deliveryBoyIds.length ? await UserModel.find({ _id: { $in: deliveryBoyIds } }).lean() : [];
+    const userMap = new Map(users.map(u => [String(u._id), u]));
 
     const summary = await Promise.all(
       loadings.map(async (loading) => {
@@ -27,13 +125,15 @@ router.get('/eod', async (_req: Request, res: Response) => {
         });
 
         const sold = sales.reduce(
-          (sum, s) => sum + s.items.reduce((si, i) => si + i.qty, 0),
+          (sum, s) => sum + s.items.reduce((si, i) => si + ((i as any).sheets_sold ?? 0), 0),
           0
         );
         const cashCollected = sales.reduce((sum, s) => sum + s.total_amount, 0);
+        const user = userMap.get(String(loading.delivery_boy_id));
 
         return {
-          delivery_boy_id: loading.delivery_boy_id,
+          delivery_boy_id:   loading.delivery_boy_id,
+          delivery_boy_name: user?.name || user?.username || String(loading.delivery_boy_id),
           openingStock,
           sold,
           remaining: openingStock - sold,
@@ -53,20 +153,94 @@ router.get('/eod', async (_req: Request, res: Response) => {
  * GET /admin/reports/monthly — Monthly financial summary.
  * Net Profit = (Sale Price - Purchase Price) - Expenses
  */
-router.get('/monthly', async (_req: Request, res: Response) => {
+router.get('/monthly', async (req: Request, res: Response) => {
   try {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const month = req.query['month'] as string | undefined;
+    const year = req.query['year'] as string | undefined;
+    const { start, end, monthNumber, yearNumber } = resolveMonthRange(month, year);
 
-    const sales = await SaleModel.find({ timestamp: { $gte: start, $lte: end } });
+    const sales    = await SaleModel.find({ timestamp: { $gte: start, $lte: end } });
     const expenses = await ExpenseModel.find({ date: { $gte: start, $lte: end } });
 
-    const totalSales = sales.reduce((sum, s) => sum + s.total_amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const netProfit = totalSales - totalExpenses;
+    const totalRevenue   = sales.reduce((sum, s) => sum + s.total_amount, 0);
+    const totalDiscount  = sales.reduce((sum, s) => sum + ((s as any).total_discount ?? 0), 0);
+    const totalProfit    = sales.reduce((sum, s) => sum + ((s as any).total_profit  ?? 0), 0);
+    const totalExpenses  = expenses.reduce((sum, e) => sum + e.amount, 0);
+    // netProfit = gross profit from production margins minus operational expenses
+    const netProfit      = totalProfit - totalExpenses;
 
-    return res.json({ totalSales, totalExpenses, netProfit });
+    return res.json({
+      month: monthNumber + 1,
+      year: yearNumber,
+      totalRevenue,
+      totalDiscount,          // revenue lost to negotiated discounts
+      totalProfit,            // gross profit (final price − production cost) before expenses
+      totalExpenses,
+      netProfit,              // totalProfit − totalExpenses
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /admin/reports/staff-monthly — Monthly payroll / delivery-boy performance.
+ */
+router.get('/staff-monthly', async (req: Request, res: Response) => {
+  try {
+    const month = req.query['month'] as string | undefined;
+    const year = req.query['year'] as string | undefined;
+    const { start, end, monthNumber, yearNumber } = resolveMonthRange(month, year);
+
+    const sales = await SaleModel.find({
+      delivery_boy_id: { $ne: null },
+      timestamp: { $gte: start, $lte: end },
+    });
+
+    const deliveryBoyIds = [...new Set(sales.map((sale) => String(sale.delivery_boy_id)))]
+      .filter((id) => id && id !== 'null');
+
+    const users = deliveryBoyIds.length
+      ? await UserModel.find({ _id: { $in: deliveryBoyIds } }).lean()
+      : [];
+    const userMap = new Map(users.map((user) => [String(user._id), user]));
+
+    const grouped = new Map<string, { deliveryBoyId: string; boyName: string; totalSheets: number; totalSales: number; totalDiscount: number; totalProfit: number; totalCashCollected: number; netCash: number; paymentStatus: string }>();
+
+    sales.forEach((sale) => {
+      const deliveryBoyId = String(sale.delivery_boy_id);
+      const existing = grouped.get(deliveryBoyId) ?? {
+        deliveryBoyId,
+        boyName: userMap.get(deliveryBoyId)?.name || userMap.get(deliveryBoyId)?.username || deliveryBoyId,
+        totalSheets: 0,
+        totalSales: 0,
+        totalDiscount: 0,
+        totalProfit: 0,
+        totalCashCollected: 0,
+        netCash: 0,
+        paymentStatus: 'Pending',
+      };
+
+      const saleSheets = sale.items.reduce((sum, item) => sum + ((item as any).sheets_sold ?? 0), 0);
+      const saleCash   = sale.total_amount;
+
+      existing.totalSheets  += saleSheets;
+      existing.totalSales   += saleCash;
+      existing.totalDiscount += ((sale as any).total_discount ?? 0);
+      existing.totalProfit   += ((sale as any).total_profit   ?? 0);
+      existing.totalCashCollected += sale.payment_mode === 'cash' ? saleCash : 0;
+      existing.netCash = existing.totalCashCollected;
+      grouped.set(deliveryBoyId, existing);
+    });
+
+    const staff = [...grouped.values()].sort((a, b) => a.boyName.localeCompare(b.boyName));
+
+    return res.json({
+      month: monthNumber + 1,
+      year: yearNumber,
+      staff,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });

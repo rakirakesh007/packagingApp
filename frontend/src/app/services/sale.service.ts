@@ -8,8 +8,7 @@ export class SaleService {
 
   createSale(data: {
     delivery_boy_id: string;
-    items: { item_id: string; qty: number; price: number }[];
-    total_amount: number;
+    items: { item_id: string; item_name?: string; hindi_name?: string; sheets_sold: number; discount_amount: number }[];
     payment_mode: 'cash' | 'online';
     shop_name?: string;
     shop_mobile?: string;

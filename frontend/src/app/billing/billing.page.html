@@ -24,12 +24,15 @@
       @for (item of activeAssignment(); track item.item_id; let i = $index) {
         <div class="bg-white border rounded-lg p-3 flex items-center gap-3">
           <div class="flex-1">
-            <p class="font-semibold">{{ item.item_name ?? item.item_id }}</p>
-            <p class="text-sm text-gray-500">&#x20B9;{{ item.price }} each</p>
+            <p class="font-semibold">{{ item.hindi_name || item.item_name || item.item_id }}</p>
+            @if (item.hindi_name) {
+              <p class="text-xs text-gray-500">({{ item.item_name }})</p>
+            }
+            <p class="text-sm text-gray-500">&#x20B9;{{ item.wholesale_price_per_sheet }}/sheet</p>
           </div>
           <div class="flex items-center gap-2">
             <button (click)="decrementQty(i)" class="w-7 h-7 bg-gray-100 rounded text-lg font-bold leading-none">-</button>
-            <span class="w-8 text-center font-bold">{{ item.qty }}</span>
+            <span class="w-8 text-center font-bold">{{ item.sheets_sold }}</span>
             <button (click)="incrementQty(i)" class="w-7 h-7 bg-gray-100 rounded text-lg font-bold leading-none">+</button>
           </div>
         </div>

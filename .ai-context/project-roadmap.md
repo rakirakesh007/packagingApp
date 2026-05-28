@@ -16,7 +16,7 @@
 
 ## 2. Database Schemas (MongoDB Atlas)
 ### Inventory
-- `item_name`, `total_stock`, `unit_price` (Sale), `purchase_price` (Cost), `low_stock_threshold`, `image_url`.
+- `item_name`, `hindi_name`, `description`, `quantity` (gm), `mrp`, `total_stock`, `unit_price` (Sale), `purchase_price` (Cost), `low_stock_threshold`, `image_url`.
 ### Sales & Invoicing
 - `items: [{item_id, qty, price}]`, `total_amount`, `shop_name`, `shop_id` (ref: Shop), `delivery_boy_id`, `payment_mode` (Enum: `cash`, `online`).
 ### Shops (Marketing)
@@ -34,6 +34,13 @@
 - **Goal:** Rapid paper-to-digital entry.
 - **UX:** `FormArray` based. **Tab-friendly** flow. `Enter` key on the last column creates a new row and auto-focuses the first field of the new row.
 - **Backend:** Atomic bulk-insert that updates `total_stock` and creates individual `Sales` records.
+
+### A1. Printable Product Label Sheet (Admin)
+- **Goal:** Generate a press-ready A4 landscape sticker sheet with exactly 15 labels.
+- **Layout:** 5-column by 3-row grid, narrow margins, light-grey die-cut borders, and client-side PDF generation.
+- **Assets:** Load `assets/color-logo.png` and `assets/veg-icon.png` as Base64 so they render reliably in the PDF.
+- **Fields:** Hindi name, net weight, MRP, PKD date, batch number, FSSAI, customer care, manufacturer, and trust phrase.
+- **Behavior:** Repeating the selected product fills the 15 slots on one page without spillover.
 
 ### B. Delivery & Sales (Field UI — Mobile)
 - **Cart Page:** Searchable spice list with `+`/`-` buttons. Angular Signals cart state.
@@ -66,6 +73,12 @@
 - **Financial Summary:** `Total Revenue`, `Total Expenses`, `Net Cash to Deposit`.
 - **Verification:** Flag rows where `Closing Stock` is negative (Indicates data entry error).
 
+### F. Monthly Reports & Payroll (Admin)
+- **Tabs:** EOD Report | Monthly Summary | Staff Payments.
+- **Monthly Summary:** Month/year filter with revenue, purchase cost, expenses, and net profit cards.
+- **Staff Payments:** Monthly delivery-boy performance, cash collection tracking, and printable monthly records.
+- **Export:** Monthly PDF/print-friendly payroll summary for formal record keeping.
+
 ---
 
 ## 4. Technical Constraints (2026 Standards)
@@ -78,11 +91,12 @@
 ## 5. Implementation Status
 - [x] Project Infrastructure (Frontend/Backend)
 - [x] Global Loading Service
-- [x] Inventory CRUD (Admin)
+- [x] Inventory CRUD (Admin — Hindi name, description, quantity, and MRP fields)
 - [x] Sales Schema (with shop_id, payment_mode)
 - [x] Shops Model (auto-create on new mobile for marketing)
-- [x] Admin Bulk Entry (Spreadsheet UI with profit calc)
+- [x] Admin Bulk Entry (Spreadsheet UI — Mobile field + inventory autocomplete dropdown, shop auto-upsert, item_id-based stock deduction)
 - [x] Morning Assignment (Admin assigns stock to delivery boy)
+- [x] Morning Assignment Additions (same boy/date can receive more stock later in the day)
 - [x] Delivery Boy — Sales/Cart Page (search, +/-, checkout, WhatsApp bill)
 - [x] Delivery Boy — Daily Sales Report (date filter, cash/online split)
 - [x] Admin Sidebar (dark, icon+label, DesiMasalaHub branding)
@@ -90,7 +104,10 @@
 - [x] Login Page (DesiMasalaHub branding, error display)
 - [x] Expense Management (CRUD)
 - [x] EOD Reporting (Admin)
+- [x] Monthly Reporting & Staff Payments (Admin tabs with month/year filters and printable monthly record)
 - [x] WhatsApp Deep Link Integration (wa.me with full receipt)
+- [x] WhatsApp Digital Catalog (secondary WhatsApp message appended after owner contact line — generated from inventory array, Hindi name + MRP, items with stock ≥ 5, polite mobile CTA)
+- [x] Printable Product Label Sheet (A4 landscape, 15-up grid, logo/veg assets, PKD/batch, one-page PDF)
 - [x] Delivery Boy Management (Admin CRUD: add/edit/deactivate, isActive login gate)
 - [ ] Shops Marketing Page (Admin view of all shops)
 - [ ] Render Deployment Scripts (PENDING)

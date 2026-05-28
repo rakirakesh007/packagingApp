@@ -1,55 +1,161 @@
 <div class="p-4">
-  <h1 class="text-2xl font-bold mb-6">Inventory</h1>
-
-  @if (isAdmin()) {
-    <div class="mb-4">
-      <button
-        (click)="showAddForm.set(!showAddForm())"
-        class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded"
-      >
-        {{ showAddForm() ? 'Cancel' : '+ Add Item' }}
-      </button>
+  <div class="flex items-center justify-between gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Inventory</h1>
+      <p class="text-sm text-gray-500">Manage retail details, pricing, and stock.</p>
     </div>
 
-    @if (showAddForm()) {
-      <form (ngSubmit)="addItem()" class="bg-white border rounded p-4 mb-6 flex flex-wrap gap-3">
-        <input [(ngModel)]="newItemName"      name="itemName"   placeholder="Item Name *"      class="border rounded p-2 flex-1 min-w-32" required />
-        <input [(ngModel)]="newUnitPrice"     name="unitPrice"  type="number" placeholder="Sale Price *"  class="border rounded p-2 w-36" required />
-        <input [(ngModel)]="newPurchasePrice" name="purchPrice" type="number" placeholder="Purchase Price" class="border rounded p-2 w-36" />
-        <input [(ngModel)]="newStock"         name="stock"      type="number" placeholder="Initial Stock"  class="border rounded p-2 w-28" />
-        <input [(ngModel)]="newThreshold"     name="threshold"  type="number" placeholder="Low Stock Alert" class="border rounded p-2 w-36" />
-        <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2 rounded">Save</button>
-      </form>
+    @if (isAdmin()) {
+      <button
+        (click)="openAddModal()"
+        class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm"
+      >
+        + Add Item
+      </button>
     }
-  }
+  </div>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     @for (item of items(); track item.id) {
       <div
-        class="bg-white shadow rounded-lg p-4 border"
+        class="bg-white shadow rounded-2xl p-5 border border-gray-100 hover:shadow-lg transition-shadow"
         [class.border-red-400]="item.total_stock <= item.low_stock_threshold"
       >
-        <div class="flex justify-between items-start mb-2">
-          <h2 class="text-lg font-bold">{{ item.item_name }}</h2>
+        <div class="flex justify-between items-start gap-3 mb-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-gray-900">{{ item.hindi_name || item.item_name }}</h2>
+            <p class="text-sm text-gray-500">{{ item.item_name }}</p>
+            @if (item.description) {
+              <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
+            }
+          </div>
           @if (item.total_stock <= item.low_stock_threshold) {
             <span class="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded">Low Stock</span>
           }
         </div>
-        <p class="text-sm text-gray-600">Stock: <strong>{{ item.total_stock }}</strong></p>
-        <p class="text-sm text-gray-600">Sale Price: <strong>&#x20B9;{{ item.unit_price }}</strong></p>
-        <p class="text-sm text-gray-600">Purchase Price: <strong>&#x20B9;{{ item.purchase_price }}</strong></p>
+
+        <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+          <p>Stock: <strong>{{ item.total_stock }}</strong></p>
+          <p>Available: <strong>{{ item.total_stock - (item.reserved_stock ?? 0) }}</strong></p>
+          <p>Units/Sheet: <strong>{{ item.units_per_sheet }}</strong></p>
+          <p>Wholesale: <strong>&#x20B9;{{ item.wholesale_price_per_sheet }}/sheet</strong></p>
+          @if (item.quantity_per_unit) {
+            <p>Quantity/unit: <strong>{{ item.quantity_per_unit }}g</strong></p>
+          }
+          @if (item.mrp_per_unit) {
+            <p>MRP/unit: <strong>&#x20B9;{{ item.mrp_per_unit }}</strong></p>
+          }
+          <p class="col-span-2">Production Cost: <strong>&#x20B9;{{ item.production_cost_per_sheet ?? 0 }}/sheet</strong></p>
+        </div>
 
         @if (isAdmin()) {
-          <button
-            class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1.5 rounded"
-            (click)="manageStock(item)"
-          >
-            Update Stock
-          </button>
+          <div class="mt-4 flex gap-2">
+            <button
+              class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
+              (click)="downloadLabelSheet([item])"
+            >
+              Download Labels
+            </button>
+            <button
+              class="flex-1 bg-teal-500 hover:bg-teal-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
+              (click)="downloadSingleLabel(item)"
+            >
+              Single Label
+            </button>
+            <button
+              class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
+              (click)="openEditModal(item)"
+            >
+              Edit
+            </button>
+            <button
+              class="bg-red-50 hover:bg-red-100 text-red-600 text-sm px-3 py-2 rounded-lg font-semibold"
+              (click)="deleteItem(item)"
+              aria-label="Delete item"
+              title="Delete item"
+            >
+              🗑️
+            </button>
+          </div>
         }
       </div>
     } @empty {
       <p class="col-span-3 text-center text-gray-400 py-8">No inventory items yet.</p>
     }
   </div>
+
+  @if (showItemModal()) {
+    <div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" (click)="closeItemModal()">
+      <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6" (click)="$event.stopPropagation()">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900">
+              {{ modalMode() === 'edit' ? 'Edit Item' : 'Add Item' }}
+            </h2>
+            <p class="text-sm text-gray-500">Update retail details, pricing, and stock in one place.</p>
+          </div>
+          <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none" (click)="closeItemModal()">&times;</button>
+        </div>
+
+        <form (ngSubmit)="addItem()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="block md:col-span-2">
+            <span class="block text-sm font-medium text-gray-700 mb-1">English Name *</span>
+            <input [(ngModel)]="formItemName" name="formItemName" class="w-full border rounded-lg p-3" placeholder="Item name" required />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Hindi Name</span>
+            <input [(ngModel)]="formHindiName" name="formHindiName" class="w-full border rounded-lg p-3" placeholder="जीरा" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Description</span>
+            <input [(ngModel)]="formDescription" name="formDescription" class="w-full border rounded-lg p-3" placeholder="Quality / origin / notes" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Stock</span>
+            <input [(ngModel)]="formStock" name="formStock" type="number" class="w-full border rounded-lg p-3" min="0" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Units per Sheet</span>
+            <input [(ngModel)]="formUnitsPerSheet" name="formUnitsPerSheet" type="number" class="w-full border rounded-lg p-3" min="1" placeholder="e.g. 10 or 12" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Quantity/unit (grams)</span>
+            <input [(ngModel)]="formQuantityPerUnit" name="formQuantityPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="e.g. 100" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">MRP/unit (&#x20B9;)</span>
+            <input [(ngModel)]="formMrpPerUnit" name="formMrpPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="Printed MRP on packet" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Production Cost / Sheet (&#x20B9;)</span>
+            <input [(ngModel)]="formProductionCostPerSheet" name="formProductionCostPerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Wholesale Price / Sheet (&#x20B9;)</span>
+            <input [(ngModel)]="formWholesalePricePerSheet" name="formWholesalePricePerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
+          </label>
+
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</span>
+            <input [(ngModel)]="formThreshold" name="formThreshold" type="number" class="w-full border rounded-lg p-3" min="0" />
+          </label>
+
+          <div class="md:col-span-2 flex justify-end gap-3 pt-2">
+            <button type="button" class="px-5 py-2.5 rounded-lg border font-semibold text-gray-700" (click)="closeItemModal()">Cancel</button>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold">
+              {{ modalMode() === 'edit' ? 'Save Changes' : 'Create Item' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>

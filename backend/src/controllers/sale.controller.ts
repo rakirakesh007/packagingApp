@@ -6,14 +6,18 @@ import { SaleModel } from '../models/sale.model';
 
 type CreateSaleItemInput = {
   item_id: string;
-  qty: number;
+  sheets_sold: number;
+  discount_amount?: number;
+  item_name?: string;
+  hindi_name?: string;
+  description?: string;
 };
 
 type CreateSaleBody = {
   delivery_boy_id: string;
   items: CreateSaleItemInput[];
-  total_amount: number;
   timestamp?: string;
+  payment_mode?: string;
 };
 
 const validateCreateSaleBody = (body: Partial<CreateSaleBody>): string | null => {
@@ -25,17 +29,15 @@ const validateCreateSaleBody = (body: Partial<CreateSaleBody>): string | null =>
     return 'items must be a non-empty array.';
   }
 
-  if (typeof body.total_amount !== 'number' || body.total_amount < 0) {
-    return 'total_amount must be a number greater than or equal to 0.';
-  }
+  // total_amount is now computed server-side from items; no validation needed here
 
   for (const item of body.items) {
     if (!item.item_id || !mongoose.isValidObjectId(item.item_id)) {
       return 'Each item must include a valid item_id.';
     }
 
-    if (!Number.isInteger(item.qty) || item.qty <= 0) {
-      return 'Each item qty must be a positive integer.';
+    if (!Number.isInteger(item.sheets_sold) || item.sheets_sold <= 0) {
+      return 'Each item sheets_sold must be a positive integer.';
     }
   }
 
@@ -55,23 +57,55 @@ const reduceInventoryStockAtomically = async (
   items: CreateSaleItemInput[],
 ): Promise<void> => {
   for (const item of items) {
+    // Guard: available_stock = total_stock − reserved_stock must cover sheets_sold.
+    // Decrement both:
+    //   total_stock    − item was sold; permanently leaves warehouse count.
+    //   reserved_stock − reservation consumed by the sale.
     const stockUpdateResult = await InventoryModel.updateOne(
       {
         _id: item.item_id,
-        total_stock: { $gte: item.qty },
+        $expr: { $gte: [{ $subtract: ['$total_stock', '$reserved_stock'] }, item.sheets_sold] },
       },
       {
-        $inc: { total_stock: -item.qty },
+        $inc: { total_stock: -item.sheets_sold, reserved_stock: -item.sheets_sold },
       },
-      {
-        session,
-      },
+      { session },
     );
 
     if (stockUpdateResult.modifiedCount !== 1) {
-      throw new Error(`Insufficient stock or invalid item for inventory id: ${item.item_id}`);
+      throw new Error(`Insufficient available stock for inventory id: ${item.item_id}`);
     }
   }
+};
+
+const buildSaleItems = async (items: CreateSaleItemInput[]): Promise<Array<{
+  item_id: string; sheets_sold: number; wholesale_price_per_sheet: number;
+  discount_amount: number; final_price: number; profit: number;
+  item_name: string; hindi_name: string; description: string;
+}>> => {
+  const inventoryDocs = await InventoryModel.find({
+    _id: { $in: items.map((item) => item.item_id) },
+  }).lean();
+  const inventoryMap = new Map(inventoryDocs.map((doc) => [String(doc._id), doc]));
+
+  return items.map((item) => {
+    const inv = inventoryMap.get(item.item_id);
+    const wholesale      = inv?.wholesale_price_per_sheet ?? 0;
+    const productionCost = inv?.production_cost_per_sheet ?? 0;
+    const discount       = item.discount_amount ?? 0;
+    const finalPerSheet  = Math.max(0, wholesale - discount);
+    return {
+      item_id:                   item.item_id,
+      sheets_sold:               item.sheets_sold,
+      wholesale_price_per_sheet: wholesale,
+      discount_amount:           discount,
+      final_price:               finalPerSheet * item.sheets_sold,
+      profit:                    (finalPerSheet - productionCost) * item.sheets_sold,
+      item_name:                 inv?.item_name  ?? item.item_name  ?? '',
+      hindi_name:                inv?.hindi_name ?? item.hindi_name ?? '',
+      description:               inv?.description ?? item.description ?? '',
+    };
+  });
 };
 
 export const createSale = async (req: Request, res: Response): Promise<Response> => {
@@ -92,13 +126,20 @@ export const createSale = async (req: Request, res: Response): Promise<Response>
 
     await session.withTransaction(async () => {
       await reduceInventoryStockAtomically(session, body.items as CreateSaleItemInput[]);
+      const saleItems = await buildSaleItems(body.items as CreateSaleItemInput[]);
+
+      const total_amount   = saleItems.reduce((sum, i) => sum + i.final_price, 0);
+      const total_discount = saleItems.reduce((sum, i) => sum + i.discount_amount * i.sheets_sold, 0);
+      const total_profit   = saleItems.reduce((sum, i) => sum + i.profit, 0);
 
       const [createdSale] = await SaleModel.create(
         [
           {
             delivery_boy_id: body.delivery_boy_id,
-            items: body.items,
-            total_amount: body.total_amount,
+            items: saleItems,
+            total_amount,
+            total_discount,
+            total_profit,
             timestamp: body.timestamp ? new Date(body.timestamp) : new Date(),
           },
         ],

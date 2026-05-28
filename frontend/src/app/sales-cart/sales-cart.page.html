@@ -20,13 +20,26 @@
     <div class="toast-success" role="status">✅ Order placed successfully!</div>
   }
 
+  <!-- No assignment empty state -->
+  @if (noAssignment()) {
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <h2 class="empty-title">No stock loaded today</h2>
+      <p class="empty-sub">Ask the admin to create a morning assignment for you.</p>
+    </div>
+  }
+
   <!-- Items List -->
+  @if (!noAssignment()) {
   <div class="items-list">
     @for (item of filteredItems(); track item.id) {
       <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
         <div class="item-info">
-          <span class="item-name">{{ item.item_name }}</span>
-          <span class="item-price">₹{{ item.unit_price }}/unit</span>
+          <span class="item-name">{{ item.hindi_name || item.item_name }}</span>
+          @if (item.hindi_name) {
+            <span class="text-xs text-gray-500">({{ item.item_name }})</span>
+          }
+          <span class="item-price">₹{{ item.wholesale_price_per_sheet }}/sheet</span>
           @if (item.total_stock <= item.low_stock_threshold) {
             <span class="low-stock-badge">Low Stock</span>
           }
@@ -38,11 +51,25 @@
           }
           <button class="btn-plus" (click)="increment(item.id)" aria-label="Add one">+</button>
         </div>
+        @if (getQty(item.id) > 0) {
+          <div class="discount-row">
+            <span>Disc &#x20B9;</span>
+            <input
+              type="number"
+              min="0"
+              [ngModel]="getDiscount(item.id)"
+              (ngModelChange)="setDiscount(item.id, +$event)"
+              placeholder="0"
+            />
+            <span>/sheet</span>
+          </div>
+        }
       </div>
     } @empty {
       <div class="empty-state">No spices found</div>
     }
   </div>
+  } <!-- end @if (!noAssignment()) -->
 
   <!-- Sticky Cart Bar -->
   @if (cartCount() > 0) {
@@ -66,8 +93,16 @@
       <div class="checkout-items">
         @for (ci of cartItemsList(); track ci.item.id) {
           <div class="checkout-item">
-            <span>{{ ci.item.item_name }} × {{ ci.qty }}</span>
-            <span>₹{{ ci.item.unit_price * ci.qty }}</span>
+            <span>
+              {{ ci.sheets_sold }} sheets × {{ ci.item.hindi_name || ci.item.item_name }}
+              @if (ci.item.hindi_name) {
+                <span class="text-xs text-gray-500">({{ ci.item.item_name }})</span>
+              }
+              @if (ci.discount_amount > 0) {
+                <span class="text-xs text-orange-500"> (disc. &#x20B9;{{ ci.discount_amount }}/sheet)</span>
+              }
+            </span>
+            <span>&#x20B9;{{ (ci.item.wholesale_price_per_sheet - ci.discount_amount) * ci.sheets_sold }}</span>
           </div>
         }
         <div class="checkout-total">

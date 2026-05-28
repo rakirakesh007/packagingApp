@@ -1,3 +1,11 @@
+/* Angular Material theme */
+@use '@angular/material' as mat;
+@include mat.core();
+$theme: mat.define-theme((
+  color: (theme-type: light, primary: mat.$azure-palette)
+));
+html { @include mat.all-component-themes($theme); }
+
 /* Global Styles */
 * {
   box-sizing: border-box;

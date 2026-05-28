@@ -8,16 +8,18 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { InventoryService } from '../services/inventory.service';
+import { AssignmentService } from '../services/assignment.service';
 import { SaleService } from '../services/sale.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { AuthService } from '../auth/auth.service';
+import { InventoryService } from '../services/inventory.service';
 import { InventoryItem } from '../models/inventory.model';
 import { environment } from '../../environments/environment';
 
 export interface CartItem {
   item: InventoryItem;
-  qty: number;
+  sheets_sold: number;
+  discount_amount: number;
 }
 
 @Component({
@@ -29,70 +31,109 @@ export interface CartItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SalesCartPage implements OnInit {
-  private inventoryService = inject(InventoryService);
+  private assignmentService = inject(AssignmentService);
   private saleService       = inject(SaleService);
   private loading           = inject(GlobalLoadingService);
   private auth              = inject(AuthService);
+  private inventoryService  = inject(InventoryService);
 
   // ── State ──────────────────────────────────────────────────────────────
   allItems     = signal<InventoryItem[]>([]);
-  cart         = signal<Map<string, number>>(new Map());
+  catalogItems = signal<InventoryItem[]>([]);   // full inventory for catalog
+  cart         = signal<Map<string, { sheets_sold: number; discount_amount: number }>>(new Map());
   searchQuery  = signal('');
   showCheckout = signal(false);
   shopName     = signal('');
   shopMobile   = signal('');
   paymentMode  = signal<'cash' | 'online'>('cash');
   orderSuccess = signal(false);
+  noAssignment = signal(false);   // true when no loading record exists for today
 
   // ── Computed ───────────────────────────────────────────────────────────
   filteredItems = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
     return q
-      ? this.allItems().filter((i) => i.item_name.toLowerCase().includes(q))
+      ? this.allItems().filter((i) =>
+          i.item_name.toLowerCase().includes(q) || (i.hindi_name ?? '').toLowerCase().includes(q)
+        )
       : this.allItems();
   });
 
   cartCount = computed(() => {
     let n = 0;
-    this.cart().forEach((qty) => (n += qty));
+    this.cart().forEach((entry) => (n += entry.sheets_sold));
     return n;
   });
 
   cartTotal = computed(() => {
     let total = 0;
-    this.cart().forEach((qty, id) => {
+    this.cart().forEach((entry, id) => {
       const item = this.allItems().find((i) => i.id === id);
-      if (item) total += qty * item.unit_price;
+      if (item) {
+        const finalPerSheet = Math.max(0, item.wholesale_price_per_sheet - entry.discount_amount);
+        total += entry.sheets_sold * finalPerSheet;
+      }
     });
     return total;
   });
 
   cartItemsList = computed<CartItem[]>(() => {
     const list: CartItem[] = [];
-    this.cart().forEach((qty, id) => {
+    this.cart().forEach((entry, id) => {
       const item = this.allItems().find((i) => i.id === id);
-      if (item && qty > 0) list.push({ item, qty });
+      if (item && entry.sheets_sold > 0) list.push({ item, sheets_sold: entry.sheets_sold, discount_amount: entry.discount_amount });
     });
     return list;
   });
 
   ngOnInit(): void {
-    this.loading.show();
+    const userId = this.auth.userId();
+    if (!userId) return;
+
+    // Load full inventory once for the digital catalog
     this.inventoryService.getItems().subscribe({
-      next:     (items) => this.allItems.set(items),
-      error:    (err)   => { console.error(err); this.loading.hide(); },
-      complete: ()      => this.loading.hide(),
+      next: (items) => this.catalogItems.set(items),
+      error: (err) => console.error('Catalog fetch failed:', err),
+    });
+
+    this.loading.show();
+    this.assignmentService.getActiveAssignment(userId).subscribe({
+      next: (assignment) => {
+        this.noAssignment.set(false);
+        // Map denormalized assignment items → InventoryItem shape
+        const items: InventoryItem[] = assignment.items.map((ai: any) => ({
+          id:                         ai.item_id,
+          item_name:                  ai.item_name,
+          hindi_name:                 ai.hindi_name,
+          wholesale_price_per_sheet:  ai.wholesale_price_per_sheet ?? 0,
+          total_stock:                ai.qty,
+          units_per_sheet:            0,
+          production_cost_per_sheet:  0, // not in loading doc; computed server-side at sale time
+          low_stock_threshold:        0,
+        }));
+        this.allItems.set(items);
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          this.noAssignment.set(true);
+        } else {
+          console.error('Assignment fetch failed:', err);
+        }
+        this.loading.hide();
+      },
+      complete: () => this.loading.hide(),
     });
   }
 
   getQty(id: string): number {
-    return this.cart().get(id) ?? 0;
+    return this.cart().get(id)?.sheets_sold ?? 0;
   }
 
   increment(id: string): void {
     this.cart.update((m) => {
       const next = new Map(m);
-      next.set(id, (next.get(id) ?? 0) + 1);
+      const cur  = next.get(id) ?? { sheets_sold: 0, discount_amount: 0 };
+      next.set(id, { ...cur, sheets_sold: cur.sheets_sold + 1 });
       return next;
     });
   }
@@ -100,13 +141,25 @@ export class SalesCartPage implements OnInit {
   decrement(id: string): void {
     this.cart.update((m) => {
       const next = new Map(m);
-      const cur = next.get(id) ?? 0;
-      if (cur <= 1) next.delete(id);
-      else next.set(id, cur - 1);
+      const cur  = next.get(id);
+      if (!cur || cur.sheets_sold <= 1) next.delete(id);
+      else next.set(id, { ...cur, sheets_sold: cur.sheets_sold - 1 });
       return next;
     });
   }
 
+  /** Set or update per-sheet discount for a cart item. */
+  setDiscount(id: string, discount: number): void {
+    this.cart.update((m) => {
+      const next = new Map(m);
+      const cur  = next.get(id);
+      if (cur) next.set(id, { ...cur, discount_amount: Math.max(0, discount) });
+      return next;
+    });
+  }
+  getDiscount(id: string): number {
+    return this.cart().get(id)?.discount_amount ?? 0;
+  }
   openCheckout(): void {
     if (this.cartCount() === 0) return;
     this.showCheckout.set(true);
@@ -121,9 +174,11 @@ export class SalesCartPage implements OnInit {
     if (!deliveryBoyId || this.cartCount() === 0) return;
 
     const items = this.cartItemsList().map((ci) => ({
-      item_id: ci.item.id,
-      qty:     ci.qty,
-      price:   ci.item.unit_price,
+      item_id:         ci.item.id,
+      item_name:       ci.item.item_name,
+      hindi_name:      ci.item.hindi_name,
+      sheets_sold:     ci.sheets_sold,
+      discount_amount: ci.discount_amount,
     }));
 
     this.loading.show();
@@ -131,10 +186,9 @@ export class SalesCartPage implements OnInit {
       .createSale({
         delivery_boy_id: deliveryBoyId,
         items,
-        total_amount: this.cartTotal(),
         payment_mode: this.paymentMode(),
-        shop_name:   this.shopName(),
-        shop_mobile: this.shopMobile(),
+        shop_name:    this.shopName(),
+        shop_mobile:  this.shopMobile(),
       })
       .subscribe({
         next: () => {
@@ -153,21 +207,54 @@ export class SalesCartPage implements OnInit {
     if (!mobile) return;
     const date  = new Date().toLocaleDateString('en-IN');
     const lines = this.cartItemsList()
-      .map((ci) => `${ci.item.item_name} x${ci.qty} = \u20B9${ci.qty * ci.item.unit_price}`)
+      .map((ci) => {
+        const name    = ci.item.hindi_name || ci.item.item_name;
+        const english = ci.item.hindi_name ? ` (${ci.item.item_name})` : '';
+        const finalPrice  = Math.max(0, ci.item.wholesale_price_per_sheet - ci.discount_amount) * ci.sheets_sold;
+        const discountNote = ci.discount_amount > 0 ? ` (disc. ₹${ci.discount_amount}/sheet)` : '';
+        return `${ci.sheets_sold} sheets ${name}${english}${discountNote} = ₹${finalPrice}`;
+      })
       .join('\n');
     const mode = this.paymentMode() === 'cash' ? 'Cash' : 'Online';
+    const catalog = this.generateCatalog(this.catalogItems());
     const msg  = [
-      '*DesiMasalaHub - Order Receipt*',
+      `नमस्ते ${this.shopName() || 'ग्राहक'}, आपका ऑर्डर:`,
       `Date: ${date}`,
-      '------------------',
       lines,
-      '------------------',
       `Total: \u20B9${this.cartTotal()}`,
       `Payment: ${mode}`,
-      '------------------',
       `To order again, contact Rakesh: wa.me/${environment.ownerWhatsapp}`,
+      ...(catalog ? ['', catalog] : []),
     ].join('\n');
     window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  /**
+   * Generates a digital catalog section for WhatsApp using the provided inventory.
+   * Only items with total_stock >= 5 are included.
+   */
+  private generateCatalog(items: InventoryItem[]): string {
+    const eligible = items.filter((item) => (item.total_stock ?? 0) >= 5);
+    if (eligible.length === 0) return '';
+
+    const rows = eligible
+      .map((item, i) => {
+        const name  = item.hindi_name ? `${item.hindi_name} (${item.item_name})` : item.item_name;
+        const price = `₹${item.wholesale_price_per_sheet}/sheet`;
+        return `${i + 1}. ${name} — ${price}`;
+      })
+      .join('\n');
+
+    return [
+      '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+      '\uD83C\uDF36\uFE0F *DesiMasalaHub — डिजिटल कैटलॉग*',
+      rows,
+      '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+      '\uD83D\uDCE6 ताज़ा और शुद्ध मसाले — सीधे आपके दरवाज़े तक।',
+       '\uD83D\uDCAC अपना ऑर्डर देने के लिए कृपया यहाँ लिखें:',
+       '1. मसालों की सूची (नाम और मात्रा)',
+       '2. अपना पूरा पता (Address)',
+    ].join('\n');
   }
 
   private resetCart(): void {

@@ -13,6 +13,7 @@ import { AuthService } from '../auth/auth.service';
 interface EodItem {
   item_id: string;
   item_name: string;
+  hindi_name?: string;
   opening: number;
   sold: number;
   remaining: number;
