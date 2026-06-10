@@ -1,11 +1,15 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import { InventoryModel } from './models/inventory.model';
 import { ShopModel } from './models/shop.model';
-import { UserModel } from './models/user.model';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/spice-app';
+
+// DEV-ONLY demo data. Wipes inventory — never run against production.
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ seed.ts is dev-only demo data. Refusing to run in production.');
+  process.exit(1);
+}
 
 const spices = [
   { item_name: 'Jeera',         hindi_name: 'जीरा',        description: 'Premium roasted cumin from Rajasthan', quantity: 100, mrp: 280, total_stock: 100, unit_price: 250,  purchase_price: 180, low_stock_threshold: 20 },
@@ -47,19 +51,7 @@ async function seed() {
     }
     console.log(`✓ Seeded ${shops.length} shops`);
 
-    // Seed users (skip if already exist)
-    const adminExists = await UserModel.findOne({ username: 'admin' });
-    if (!adminExists) {
-      await UserModel.create([
-        { username: 'admin', password: await bcrypt.hash('admin123', 10), role: 'admin' },
-        { username: 'boy1',  password: await bcrypt.hash('pass123',  10), role: 'delivery_boy', name: 'Ravi Kumar' },
-      ]);
-      console.log('✓ Seeded users (admin/admin123, boy1/pass123)');
-    } else {
-      console.log('✓ Users already exist, skipping');
-    }
-
-    console.log('\nSeed complete. Credentials: admin/admin123 | boy1/pass123');
+    console.log('\nSeed complete. Create users with: ADMIN_PASSWORD=... npx ts-node src/seed-users.ts');
   } catch (err) {
     console.error('Seed error:', err);
   } finally {

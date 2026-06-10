@@ -13,6 +13,7 @@ import {
 } from '@angular/forms';
 import { ExpenseService } from '../services/expense.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
+import { ToastService } from '../services/toast.service';
 import { Expense } from '../models/expense.model';
 
 const EXPENSE_CATEGORIES = [
@@ -40,6 +41,7 @@ type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export class ExpensePage implements OnInit {
   private expenseService = inject(ExpenseService);
   private loading = inject(GlobalLoadingService);
+  private toast = inject(ToastService);
   private fb = inject(NonNullableFormBuilder);
 
   readonly categories = EXPENSE_CATEGORIES;
@@ -72,11 +74,13 @@ export class ExpensePage implements OnInit {
       .addExpense({ category, amount, description: description || undefined })
       .subscribe({
         next: () => {
+          this.toast.success('Expense added.');
           this.expenseForm.reset({ category: 'Fuel', amount: 0, description: '' });
           this.loadExpenses();
         },
         error: (err) => {
           console.error('Failed to add expense:', err);
+          this.toast.error('Could not add expense. Please try again.');
           this.loading.hide();
         },
       });
@@ -86,9 +90,13 @@ export class ExpensePage implements OnInit {
     if (!confirm('Delete this expense?')) return;
     this.loading.show();
     this.expenseService.deleteExpense(id).subscribe({
-      next: () => this.loadExpenses(),
+      next: () => {
+        this.toast.success('Expense deleted.');
+        this.loadExpenses();
+      },
       error: (err) => {
         console.error('Failed to delete expense:', err);
+        this.toast.error('Could not delete expense. Please try again.');
         this.loading.hide();
       },
     });

@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { SaleModel } from '../models/sale.model';
 import { InventoryModel } from '../models/inventory.model';
 import { ShopModel } from '../models/shop.model';
+import { requireAdmin, requireSelfOrAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -60,32 +62,47 @@ router.post('/', async (req: Request, res: Response) => {
 
     const saleItems = await buildSaleItems(items);
 
-    // Decrement total_stock (item permanently sold) AND reserved_stock
-    // (item is no longer "in field" — reservation is consumed by the sale).
-    await Promise.all(
-      items.map((item: { item_id: string; sheets_sold: number }) =>
-        InventoryModel.findByIdAndUpdate(item.item_id, {
-          $inc: { total_stock: -item.sheets_sold, reserved_stock: -item.sheets_sold },
-        })
-      )
-    );
-
     // Compute totals server-side from enriched sale items
     const total_amount   = saleItems.reduce((sum, i) => sum + i.final_price, 0);
     const total_discount = saleItems.reduce((sum, i) => sum + i.discount_amount * i.sheets_sold, 0);
     const total_profit   = saleItems.reduce((sum, i) => sum + i.profit, 0);
 
-    const sale = await SaleModel.create({
-      customer_name,
-      shop_name: shop_name || customer_name || '',
-      shop_id,
-      items: saleItems,
-      total_amount,
-      total_discount,
-      total_profit,
-      payment_mode: payment_mode || 'cash',
-      delivery_boy_id,
-    });
+    // Decrement stock AND create the sale atomically (Golden Rule #1):
+    //   total_stock    − item permanently sold
+    //   reserved_stock − item no longer "in field"; reservation consumed
+    const session = await mongoose.startSession();
+    let sale;
+    try {
+      await session.withTransaction(async () => {
+        for (const item of items as { item_id: string; sheets_sold: number }[]) {
+          await InventoryModel.findByIdAndUpdate(
+            item.item_id,
+            { $inc: { total_stock: -item.sheets_sold, reserved_stock: -item.sheets_sold } },
+            { session }
+          );
+        }
+
+        const [created] = await SaleModel.create(
+          [
+            {
+              customer_name,
+              shop_name: shop_name || customer_name || '',
+              shop_id,
+              items: saleItems,
+              total_amount,
+              total_discount,
+              total_profit,
+              payment_mode: payment_mode || 'cash',
+              delivery_boy_id,
+            },
+          ],
+          { session }
+        );
+        sale = created;
+      });
+    } finally {
+      await session.endSession();
+    }
 
     return res.status(201).json(sale);
   } catch (error) {
@@ -95,7 +112,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 /** GET /sale/today/:deliveryBoyId?date=YYYY-MM-DD — Today's sales for daily report. */
-router.get('/today/:deliveryBoyId', async (req: Request, res: Response) => {
+router.get('/today/:deliveryBoyId', requireSelfOrAdmin('deliveryBoyId'), async (req: Request, res: Response) => {
   try {
     const dateParam = req.query['date'] as string | undefined;
     const day = dateParam ? new Date(dateParam) : new Date();
@@ -114,7 +131,7 @@ router.get('/today/:deliveryBoyId', async (req: Request, res: Response) => {
 });
 
 /** GET /sale/history/:deliveryBoyId — Full sales history. */
-router.get('/history/:deliveryBoyId', async (req: Request, res: Response) => {
+router.get('/history/:deliveryBoyId', requireSelfOrAdmin('deliveryBoyId'), async (req: Request, res: Response) => {
   try {
     const sales = await SaleModel.find({
       delivery_boy_id: req.params.deliveryBoyId,
@@ -126,8 +143,8 @@ router.get('/history/:deliveryBoyId', async (req: Request, res: Response) => {
   }
 });
 
-/** POST /sale/bulk — Atomic bulk insert from Admin Bulk Entry spreadsheet UI. */
-router.post('/bulk', async (req: Request, res: Response) => {
+/** POST /sale/bulk — Atomic bulk insert from Admin Bulk Entry spreadsheet UI (admin only). */
+router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
   const rows = req.body;
   if (!Array.isArray(rows) || rows.length === 0) {
     return res.status(400).json({ message: 'Rows are required.' });
@@ -236,23 +253,33 @@ router.post('/bulk', async (req: Request, res: Response) => {
       };
     });
 
-    const sales = await SaleModel.insertMany(
-      // strip the internal _itemId/_sheetsDelta helpers before inserting
-      saleDocuments.map(({ _itemId: _a, _sheetsDelta: _b, ...doc }) => doc)
-    );
-
-    // ── Decrement total_stock by sheets consumed (fractional for retail) ─────
+    // ── Insert sales + decrement stock atomically (Golden Rule #1) ──────────
     // Admin bulk entry has no delivery boy assignment, so reserved_stock is untouched.
-    await Promise.all(
-      saleDocuments.map(({ _itemId, _sheetsDelta }) =>
-        InventoryModel.findByIdAndUpdate(
-          _itemId,
-          { $inc: { total_stock: -_sheetsDelta } }
-        )
-      )
-    );
+    const session = await mongoose.startSession();
+    let insertedCount = 0;
+    try {
+      await session.withTransaction(async () => {
+        const sales = await SaleModel.insertMany(
+          // strip the internal _itemId/_sheetsDelta helpers before inserting
+          saleDocuments.map(({ _itemId: _a, _sheetsDelta: _b, ...doc }) => doc),
+          { session }
+        );
+        insertedCount = sales.length;
 
-    return res.status(201).json({ inserted: sales.length });
+        for (const { _itemId, _sheetsDelta } of saleDocuments) {
+          // Decrement total_stock by sheets consumed (fractional for retail)
+          await InventoryModel.findByIdAndUpdate(
+            _itemId,
+            { $inc: { total_stock: -_sheetsDelta } },
+            { session }
+          );
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return res.status(201).json({ inserted: insertedCount });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });

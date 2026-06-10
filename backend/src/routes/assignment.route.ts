@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { LoadingModel } from '../models/loading.model';
 import { InventoryModel } from '../models/inventory.model'; // still needed to denormalize item_name/unit_price at load time
+import { requireAdmin, requireSelfOrAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -34,7 +35,7 @@ function dayBounds(dateParam?: string): { start: Date; end: Date } {
  *   On sale    → total_stock  AND reserved_stock both decremented
  *   This prevents double-deduction and over-assignment of the same stock.
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   const { delivery_boy_id, items, date } = req.body as {
     delivery_boy_id: string;
     items: { item_id: string; qty: number; item_name?: string; hindi_name?: string; wholesale_price_per_sheet?: number }[];
@@ -163,7 +164,7 @@ router.post('/', async (req: Request, res: Response) => {
  *
  * Body: { delivery_boy_id, items: [{ item_id, qty }], date? }
  */
-router.post('/return', async (req: Request, res: Response) => {
+router.post('/return', requireAdmin, async (req: Request, res: Response) => {
   const { delivery_boy_id, items } = req.body as {
     delivery_boy_id: string;
     items: { item_id: string; qty: number }[];
@@ -205,7 +206,7 @@ router.post('/return', async (req: Request, res: Response) => {
  * GET /assignment/active/:deliveryBoyId
  * Returns today's assignment (no populate needed — fields are denormalized).
  */
-router.get('/active/:deliveryBoyId', async (req: Request, res: Response) => {
+router.get('/active/:deliveryBoyId', requireSelfOrAdmin('deliveryBoyId'), async (req: Request, res: Response) => {
   try {
     const { start, end } = dayBounds();
     const assignment = await LoadingModel.findOne({
@@ -226,7 +227,7 @@ router.get('/active/:deliveryBoyId', async (req: Request, res: Response) => {
  * GET /assignment/date/:deliveryBoyId?date=YYYY-MM-DD
  * Returns the assignment for any given date (used by delivery boy cart).
  */
-router.get('/date/:deliveryBoyId', async (req: Request, res: Response) => {
+router.get('/date/:deliveryBoyId', requireSelfOrAdmin('deliveryBoyId'), async (req: Request, res: Response) => {
   try {
     const { start, end } = dayBounds(req.query['date'] as string | undefined);
     const assignment = await LoadingModel.findOne({

@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+backend/static/
 
 # Logs
 npm-debug.log*

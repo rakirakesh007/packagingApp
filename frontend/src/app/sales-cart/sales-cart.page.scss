@@ -89,8 +89,9 @@
 }
 
 %ctrl-btn {
-  width: 34px;
-  height: 34px;
+  // 44px minimum touch target for gloved/field use
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   font-size: 1.25rem;
@@ -274,6 +275,10 @@
   cursor: pointer;
   margin-top: 0.5rem;
   &:active { opacity: 0.88; }
+  &:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+  }
 }
 
 .discount-row {

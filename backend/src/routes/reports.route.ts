@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { SaleModel } from '../models/sale.model';
 import { LoadingModel } from '../models/loading.model';
+import { requireSelfOrAdmin } from '../middleware/auth.middleware';
 const router = Router();
 
-router.get('/eod/:delivery_boy_id', async (req, res) => {
+router.get('/eod/:delivery_boy_id', requireSelfOrAdmin('delivery_boy_id'), async (req, res) => {
   const { delivery_boy_id } = req.params;
 
   try {

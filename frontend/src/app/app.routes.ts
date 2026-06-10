@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   {
@@ -11,7 +12,7 @@ export const routes: Routes = [
     path: 'label-sheet',
     loadComponent: () =>
       import('./label-sheet/label-sheet.component').then((m) => m.LabelSheetComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
   },
   {
     path: 'app',
@@ -24,21 +25,25 @@ export const routes: Routes = [
         path: 'admin',
         loadComponent: () =>
           import('./admin-dashboard/admin-dashboard.page').then((m) => m.AdminDashboardPage),
+        canActivate: [adminGuard],
       },
       {
         path: 'marketing',
         loadComponent: () =>
           import('./marketing-dashboard/marketing-dashboard.page').then((m) => m.MarketingDashboardPage),
+        canActivate: [adminGuard],
       },
       {
         path: 'inventory',
         loadComponent: () =>
           import('./inventory/inventory.page').then((m) => m.InventoryPage),
+        canActivate: [adminGuard],
       },
       {
         path: 'assignment',
         loadComponent: () =>
           import('./assignment/assignment.page').then((m) => m.AssignmentPage),
+        canActivate: [adminGuard],
       },
       {
         path: 'bulk-entry',
@@ -46,26 +51,31 @@ export const routes: Routes = [
           import('./admin-bulk-entry/admin-bulk-entry.component').then(
             (m) => m.AdminBulkEntryComponent
           ),
+        canActivate: [adminGuard],
       },
       {
         path: 'expenses',
         loadComponent: () =>
           import('./expense/expense.page').then((m) => m.ExpensePage),
+        canActivate: [adminGuard],
       },
       {
         path: 'eod-report',
         loadComponent: () =>
           import('./eod-report/eod-report.component').then((m) => m.EodReportComponent),
+        canActivate: [adminGuard],
       },
       {
         path: 'reports',
         loadComponent: () =>
           import('./admin-reports/admin-reports.page').then((m) => m.AdminReportsPage),
+        canActivate: [adminGuard],
       },
       {
         path: 'users',
         loadComponent: () =>
           import('./users-admin/users-admin.page').then((m) => m.UsersAdminPage),
+        canActivate: [adminGuard],
       },
       // ── Delivery Boy routes ─────────────────────────────────────────────
       {

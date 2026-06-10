@@ -1,85 +1,79 @@
-# Deployment Guide: Connect to MongoDB Atlas & Deploy to Render
+# Deployment Guide — DesiMasalaHub on Render + MongoDB Atlas
 
-This guide will help you connect your Node.js/Express backend to MongoDB Atlas and deploy your project to Render. Use this as a reference for any similar project.
+One Render **Web Service** runs everything: the Express API **and** the Angular PWA
+(served from the same origin by `backend/src/server.ts`). The delivery boy installs
+the app from Chrome via **Add to Home Screen** — no APK needed, and every deploy
+updates his app automatically.
 
 ---
 
-## 1. Connect to MongoDB Atlas
+## 1. MongoDB Atlas
 
-### a. Create a MongoDB Atlas Cluster
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) and sign up or log in.
-2. Create a new **free cluster** (select AWS/GCP/Azure, region, etc.).
-3. In the cluster dashboard, click **Database Access** and add a database user (username & password).
-4. In **Network Access**, add your IP address (or `0.0.0.0/0` for open access, not recommended for production).
-
-### b. Get Your Connection String
-1. In the cluster dashboard, click **Connect** > **Connect your application**.
-2. Copy the connection string. It looks like:
+1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
+2. **Database Access** → add a database user (username & password).
+3. **Network Access** → add `0.0.0.0/0` (Render IPs change; restricting is impractical on free tier).
+4. **Connect → Connect your application** → copy the connection string:
    ```
    mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/<dbname>?retryWrites=true&w=majority
    ```
 
-### c. Update Your .env File
-1. In your backend folder, open `.env`.
-2. Replace the `MONGO_URI` line with your Atlas string:
-   ```
-   MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/<dbname>?retryWrites=true&w=majority
-   ```
-3. Save the file.
+> Atlas is a replica set, which the app **requires** — sales use MongoDB transactions.
 
----
+## 2. Render Web Service (single service: API + frontend)
 
-## 2. Deploy Backend to Render
+1. Push the repo to GitHub.
+2. [Render dashboard](https://dashboard.render.com/) → **New +** → **Web Service** → connect the repo.
+3. Settings:
+   - **Root Directory:** *(leave empty — repo root)*
+   - **Build Command:** `./render-build.sh`
+   - **Start Command:** `node backend/dist/server.js`
+   - **Health Check Path:** `/health`
+4. **Environment Variables:**
 
-### a. Push Your Code to GitHub
-1. Make sure your project is in a GitHub repository.
+   | Variable | Value |
+   |----------|-------|
+   | `MONGO_URI` | your Atlas connection string |
+   | `JWT_SECRET` | strong random secret — generate with `openssl rand -hex 32` |
+   | `NODE_ENV` | `production` |
+   | `OWNER_WHATSAPP` | `918050991832` |
 
-### b. Create a New Web Service on Render
-1. Go to [Render](https://dashboard.render.com/) and log in.
-2. Click **New +** > **Web Service**.
-3. Connect your GitHub repo and select your backend folder.
-4. Set the **Build Command** to:
-   ```
-   npm install && npm run build
-   ```
-5. Set the **Start Command** to:
-   ```
-   npm run start
-   ```
-6. In **Environment Variables**, add:
-   - `MONGO_URI` (your Atlas string)
-   - `JWT_SECRET` (any random string)
-   - Any other variables from your `.env`
-7. Click **Create Web Service**.
+   The server **refuses to boot in production without `JWT_SECRET`** (no insecure fallback).
+5. **Create Web Service** and wait for the first deploy. Your app is live at
+   `https://<service-name>.onrender.com`.
 
-### c. Wait for Build & Deploy
-- Render will build and deploy your backend. The logs will show when it's live.
-- The public URL will be shown in the dashboard.
+## 3. Create the production admin user
 
----
+Run once from your laptop, pointed at the production database:
 
-## 3. Deploy Frontend (Angular/Ionic) to Render (Optional)
+```bash
+cd backend
+MONGO_URI='<your Atlas string>' ADMIN_PASSWORD='<strong password>' npx ts-node src/seed-users.ts
+```
 
-1. Build your frontend:
-   ```
-   cd frontend
-   npm run build
-   ```
-2. Deploy the `dist/` folder to a static site host (Render, Vercel, Netlify, etc.).
+Then log in as admin and create delivery boys from **Admin → Delivery Boys**.
+**Never** run `src/seed.ts` against production — it wipes inventory with demo data
+(and refuses to run when `NODE_ENV=production`).
 
----
+## 4. Delivery boy phone setup (PWA)
 
-## 4. Common Issues
-- **CORS errors:** Make sure your backend allows requests from your frontend domain.
-- **MongoDB connection errors:** Double-check your Atlas URI, user, and network access.
-- **Environment variables:** Always set them in Render's dashboard, not just in `.env`.
+1. On his Android phone, open `https://<service-name>.onrender.com` in **Chrome**.
+2. Log in with his delivery-boy account.
+3. Chrome menu (⋮) → **Add to Home Screen** (or the "Install app" prompt).
+4. The DesiMasalaHub icon appears on his home screen and opens full-screen like an app.
 
----
+Updates are automatic: every deploy is picked up the next time he opens the app.
 
-## 5. References
-- [MongoDB Atlas Docs](https://www.mongodb.com/docs/atlas/)
-- [Render Docs](https://render.com/docs)
+## 5. Free-tier behaviour
 
----
+- Render free tier **sleeps after ~15 min idle**; the first request takes ~30–50 s to
+  wake. The app shows its loading bar during this (GlobalLoadingService).
+- If that's painful for daily field use, upgrade the service (~$7/mo) for always-on.
 
-**Keep this file for all future projects!**
+## 6. Common issues
+
+| Issue | Fix |
+|-------|-----|
+| 401 immediately after deploy | `JWT_SECRET` changed → everyone must log in again (expected) |
+| MongoDB connection errors | Re-check Atlas URI, db user password, Network Access `0.0.0.0/0` |
+| Frontend loads but API fails | Confirm Start Command is `node backend/dist/server.js` and build ran `render-build.sh` |
+| Stale app on phone | Close and reopen the PWA twice — the service worker activates the new version on relaunch |

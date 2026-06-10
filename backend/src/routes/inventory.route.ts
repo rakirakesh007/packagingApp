@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { InventoryModel } from '../models/inventory.model';
+import { requireAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -37,8 +38,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-/** POST /inventory — create a new inventory item. */
-router.post('/', async (req: Request, res: Response) => {
+/** POST /inventory — create a new inventory item (admin only). */
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const item = await InventoryModel.create(req.body);
     return res.status(201).json(item);
@@ -47,8 +48,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-/** PATCH /inventory/:id — update stock or fields. */
-router.patch('/:id', async (req: Request, res: Response) => {
+/** PATCH /inventory/:id — update stock or fields (admin only). */
+router.patch('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const item = await InventoryModel.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!item) return res.status(404).json({ message: 'Item not found.' });
@@ -58,8 +59,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 });
 
-/** DELETE /inventory/:id — remove an item. */
-router.delete('/:id', async (req: Request, res: Response) => {
+/** DELETE /inventory/:id — remove an item (admin only). */
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const item = await InventoryModel.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ message: 'Item not found.' });

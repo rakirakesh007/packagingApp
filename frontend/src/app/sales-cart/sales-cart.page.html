@@ -151,8 +151,8 @@
         </div>
       </div>
 
-      <button class="btn-place-order" (click)="placeOrder()">
-        Place Order &amp; Send WhatsApp Bill
+      <button class="btn-place-order" (click)="placeOrder()" [disabled]="submitting()">
+        {{ submitting() ? 'Recording sale…' : 'Place Order & Send WhatsApp Bill' }}
       </button>
     </div>
   }

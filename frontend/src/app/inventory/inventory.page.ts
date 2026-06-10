@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 import { InventoryService } from '../services/inventory.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { AuthService } from '../auth/auth.service';
+import { ToastService } from '../services/toast.service';
 import { InventoryItem } from '../models/inventory.model';
 
 @Component({
@@ -26,6 +27,7 @@ export class InventoryPage implements OnInit {
   private inventoryService = inject(InventoryService);
   private loading = inject(GlobalLoadingService);
   private auth = inject(AuthService);
+  private toast = inject(ToastService);
   private router = inject(Router);
 
   readonly labelSheetConfig = {
@@ -144,10 +146,15 @@ export class InventoryPage implements OnInit {
 
     request.subscribe({
       next: () => {
+        this.toast.success(this.modalMode() === 'edit' ? 'Product updated.' : 'Product added.');
         this.closeItemModal();
         this.fetchItems();
       },
-      error: (err) => { console.error('Failed to save item:', err); this.loading.hide(); },
+      error: (err) => {
+        console.error('Failed to save item:', err);
+        this.toast.error('Could not save product. Please try again.');
+        this.loading.hide();
+      },
     });
   }
 
@@ -156,8 +163,15 @@ export class InventoryPage implements OnInit {
     if (!confirmed) return;
     this.loading.show();
     this.inventoryService.deleteProduct(item.id).subscribe({
-      next: () => this.fetchItems(),
-      error: (err) => { console.error('Failed to delete item:', err); this.loading.hide(); },
+      next: () => {
+        this.toast.success(`"${item.item_name}" deleted.`);
+        this.fetchItems();
+      },
+      error: (err) => {
+        console.error('Failed to delete item:', err);
+        this.toast.error('Could not delete product. Please try again.');
+        this.loading.hide();
+      },
     });
   }
 

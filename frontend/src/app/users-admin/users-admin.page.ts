@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
+import { ToastService } from '../services/toast.service';
 import { User } from '../services/assignment.service';
 
 @Component({
@@ -23,6 +24,7 @@ import { User } from '../services/assignment.service';
 export class UsersAdminPage implements OnInit {
   private http    = inject(HttpClient);
   private loading = inject(GlobalLoadingService);
+  private toast   = inject(ToastService);
   private fb      = inject(FormBuilder);
 
   users       = signal<User[]>([]);
@@ -49,7 +51,11 @@ export class UsersAdminPage implements OnInit {
     this.loading.show();
     this.http.get<User[]>('/users?role=delivery_boy').subscribe({
       next:     (data) => this.users.set(data),
-      error:    (err)  => { console.error(err); this.loading.hide(); },
+      error:    (err)  => {
+        console.error(err);
+        this.toast.error('Could not load delivery boys.');
+        this.loading.hide();
+      },
       complete: ()     => this.loading.hide(),
     });
   }
@@ -93,7 +99,10 @@ export class UsersAdminPage implements OnInit {
         );
         this.showSuccess(`${user.name || user.username} marked as ${next ? 'Active' : 'Inactive'}.`);
       },
-      error: (err) => console.error(err),
+      error: (err) => {
+        console.error(err);
+        this.toast.error('Could not update user status.');
+      },
     });
   }
 
@@ -106,7 +115,11 @@ export class UsersAdminPage implements OnInit {
         this.loading.hide();
         this.showSuccess('User deleted.');
       },
-      error: (err) => { console.error(err); this.loading.hide(); },
+      error: (err) => {
+        console.error(err);
+        this.toast.error('Could not delete user.');
+        this.loading.hide();
+      },
     });
   }
 

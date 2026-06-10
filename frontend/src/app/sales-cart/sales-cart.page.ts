@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { AssignmentService } from '../services/assignment.service';
 import { SaleService } from '../services/sale.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
+import { ToastService } from '../services/toast.service';
 import { AuthService } from '../auth/auth.service';
 import { InventoryService } from '../services/inventory.service';
 import { InventoryItem } from '../models/inventory.model';
@@ -34,6 +35,7 @@ export class SalesCartPage implements OnInit {
   private assignmentService = inject(AssignmentService);
   private saleService       = inject(SaleService);
   private loading           = inject(GlobalLoadingService);
+  private toast             = inject(ToastService);
   private auth              = inject(AuthService);
   private inventoryService  = inject(InventoryService);
 
@@ -47,6 +49,8 @@ export class SalesCartPage implements OnInit {
   shopMobile   = signal('');
   paymentMode  = signal<'cash' | 'online'>('cash');
   orderSuccess = signal(false);
+  /** Guards against double-tapping Place Order while the sale request is in flight. */
+  submitting   = signal(false);
   noAssignment = signal(false);   // true when no loading record exists for today
 
   // ── Computed ───────────────────────────────────────────────────────────
@@ -170,7 +174,8 @@ export class SalesCartPage implements OnInit {
 
   placeOrder(): void {
     const deliveryBoyId = this.auth.userId();
-    if (!deliveryBoyId || this.cartCount() === 0) return;
+    if (!deliveryBoyId || this.cartCount() === 0 || this.submitting()) return;
+    this.submitting.set(true);
 
     const items = this.cartItemsList().map((ci) => ({
       item_id:         ci.item.id,
@@ -191,13 +196,20 @@ export class SalesCartPage implements OnInit {
       })
       .subscribe({
         next: () => {
+          this.submitting.set(false);
           this.loading.hide();
+          this.toast.success('Sale recorded!');
           this.openWhatsApp();
           this.resetCart();
           this.orderSuccess.set(true);
           setTimeout(() => this.orderSuccess.set(false), 3000);
         },
-        error: (err) => { console.error(err); this.loading.hide(); },
+        error: (err) => {
+          console.error(err);
+          this.submitting.set(false);
+          this.loading.hide();
+          this.toast.error(err?.error?.message ?? 'Could not record sale. Please try again.');
+        },
       });
   }
 

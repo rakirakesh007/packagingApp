@@ -7,6 +7,8 @@ import { firstValueFrom } from 'rxjs';
 interface JwtPayload {
   id: string;
   role: 'admin' | 'delivery_boy';
+  /** Expiry as Unix seconds (set by the backend's 7d token). */
+  exp?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -43,24 +45,34 @@ export class AuthService {
 
   /** Clears all auth state and redirects to login. */
   logout(): void {
+    this._clearState();
+    this.router.navigate(['/login']);
+  }
+
+  /** Clears auth state without navigating (used during app init). */
+  private _clearState(): void {
     this.isAuthenticated.set(false);
     this.userRole.set(null);
     this.userId.set(null);
     this.token.set(null);
     localStorage.removeItem('token');
-    this.router.navigate(['/login']);
   }
 
-  /** Decodes a JWT and sets all auth signals. */
+  /** Decodes a JWT and sets all auth signals. Expired tokens are discarded. */
   private _applyToken(rawToken: string): void {
     try {
       const payload = JSON.parse(atob(rawToken.split('.')[1])) as JwtPayload;
+      if (payload.exp && payload.exp * 1000 <= Date.now()) {
+        // Token already expired (7-day JWT) — treat as logged out.
+        this._clearState();
+        return;
+      }
       this.token.set(rawToken);
       this.isAuthenticated.set(true);
       this.userRole.set(payload.role);
       this.userId.set(payload.id);
     } catch {
-      this.logout();
+      this._clearState();
     }
   }
 }

@@ -1,15 +1,23 @@
 #!/bin/bash
-
-# Exit on error
+# Render build script: builds frontend + backend and places the SPA where
+# backend/src/server.ts serves it (backend/static/frontend/browser).
 set -e
 
-# Navigate to the frontend directory
+# ── Frontend ────────────────────────────────────────────────────────────────
 cd frontend
-
-# Install dependencies and build the frontend
-npm install
+npm ci || npm install
 npm run build
+cd ..
 
-# Move the build output to the backend static folder
-rm -rf ../backend/static
-mv dist ../backend/static
+# ── Backend ─────────────────────────────────────────────────────────────────
+cd backend
+npm ci || npm install
+npm run build
+cd ..
+
+# ── Place SPA build for same-origin serving ─────────────────────────────────
+rm -rf backend/static
+mkdir -p backend/static
+cp -R frontend/dist/frontend backend/static/frontend
+
+echo "✅ Build complete. Start with: node backend/dist/server.js"

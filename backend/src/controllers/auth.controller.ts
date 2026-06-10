@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
 import { UserModel } from '../models/user.model';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+import { signAuthToken, AuthPayload } from '../middleware/auth.middleware';
 
 export async function login(req: Request, res: Response) {
   const { username, password } = req.body;
@@ -17,6 +15,6 @@ export async function login(req: Request, res: Response) {
   if (user.isActive === false) {
     return res.status(403).json({ message: 'Account is deactivated. Contact your admin.' });
   }
-  const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const token = signAuthToken({ id: String(user._id), role: user.role as AuthPayload['role'] });
   res.json({ token, user: { username: user.username, role: user.role } });
 }

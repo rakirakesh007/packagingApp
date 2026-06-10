@@ -39,16 +39,22 @@ npm run build
 
 See [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) for full details.
 
+**One Render Web Service serves both the API and the Angular PWA** — `render-build.sh`
+builds both and `server.ts` serves the SPA from `backend/static/frontend/browser`
+with an index.html fallback. Same origin → relative API URLs work, no CORS.
+
 ### Quick Steps
 1. Push code to GitHub
-2. Create MongoDB Atlas cluster, get connection string
-3. Create Render Web Service pointing to backend folder
-4. Set environment variables: `MONGO_URI`, `JWT_SECRET`, `PORT`
-5. Deploy frontend as Render Static Site (or serve from backend)
+2. Create MongoDB Atlas cluster (replica set — required for transactions)
+3. Render Web Service at the **repo root**: build `./render-build.sh`, start `node backend/dist/server.js`, health check `/health`
+4. Set env vars (below); create the admin via `ADMIN_PASSWORD=... npx ts-node src/seed-users.ts`
+5. Delivery boy installs the PWA: open the URL in Chrome → Add to Home Screen
 
 ### Environment Variables (Backend)
 | Variable | Description |
 |----------|-------------|
 | `MONGO_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | Secret for JWT token signing |
-| `PORT` | Server port (default: 3000) |
+| `JWT_SECRET` | Secret for JWT signing — **required in production** (server exits without it) |
+| `NODE_ENV` | `production` on Render |
+| `FRONTEND_ORIGIN` | Optional extra CORS origin (same-origin serving usually makes this unnecessary) |
+| `PORT` | Server port (default: 3000; Render sets this automatically) |
