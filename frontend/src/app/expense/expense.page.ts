@@ -18,9 +18,13 @@ import { Expense } from '../models/expense.model';
 const EXPENSE_CATEGORIES = [
   'Fuel',
   'Raw Material',
+  'Transport',
+  'Packaging',
   'Maintenance',
   'Salary',
+  'Utilities',
   'Miscellaneous',
+  'Other',
 ] as const;
 
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];

@@ -1,0 +1,489 @@
+// ─── Label card ──────────────────────────────────────────────────────────────
+// NOTE: Only one .label-card block — duplicates removed.
+
+.label-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border: 1px solid #6b7280;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111827;
+  overflow: hidden;
+
+  // ── Large preview ─────────────────────────────────────────────────────────
+  &--large {
+    width: 100%;
+    max-width: 560px;
+    min-height: 110px;
+    border-radius: 4px;
+
+    .label-logo {
+      width: 90px;
+      min-width: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 8px;
+      border-right: 1px solid #d1d5db;
+      background: #fafafa;
+      box-sizing: border-box;
+
+      &__img  { width: 50px; height: 50px; object-fit: contain; display: block; }
+      &__fallback { font-size: 10px; color: #9ca3af; }
+    }
+
+    .label-veg {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 3px;
+
+      &__icon {
+        width: 18px; height: 18px;
+        object-fit: contain;
+        display: block;
+        flex-shrink: 0;
+      }
+      &__text {
+        font-size: 7px; font-weight: 700; color: #15803d;
+        white-space: nowrap; line-height: 1.3;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: hidden;
+    }
+
+    .label-header-row { width: 100%; margin-bottom: 3px; text-align: left; }
+
+    .label-hindi   { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 0; white-space: normal; word-break: break-word; overflow: visible; text-align: left; }
+    .label-english { font-size: 12px; font-weight: 500; color: #374151; margin: 0 0 3px; white-space: normal; word-break: break-word; overflow: visible; text-align: left; }
+    .label-info    { font-size: 12px; font-weight: 700; margin: 0 0 2px; white-space: nowrap; text-align: left; }
+    .label-pkd     { font-size: 11px; margin: 0 0 2px; white-space: nowrap; text-align: left; }
+    .label-fssai   { font-size: 10px; color: #4b5563; margin: 0; white-space: nowrap; text-align: left; }
+  }
+
+  // ── Mini (sheet grid cell) ────────────────────────────────────────────────
+  &--mini {
+    border-radius: 0;
+
+    .label-logo {
+      width: 70px;
+      min-width: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 4px;
+      border-right: 1px solid #d1d5db;
+      background: #fafafa;
+      box-sizing: border-box;
+
+      &__img { width: 50px; height: 50px; object-fit: contain; display: block; }
+    }
+
+    .label-veg {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 2px;
+
+      &__icon {
+        width: 13px; height: 13px;
+        object-fit: contain;
+        display: block;
+        flex-shrink: 0;
+      }
+      &__text {
+        font-size: 6px; font-weight: 700; color: #15803d;
+        white-space: nowrap; line-height: 1;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      padding: 3px 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: hidden;
+    }
+
+    .label-header-row { width: 100%; margin-bottom: 1px; text-align: left; }
+
+    .label-hindi   { font-size: 9px;  font-weight: 800; line-height: 1.25; margin: 0; white-space: normal; word-break: break-word; overflow: visible; text-align: left; }
+    .label-english { font-size: 7px;  color: #374151; margin: 0 0 1px; white-space: normal; word-break: break-word; overflow: visible; text-align: left; }
+    .label-info    { font-size: 7px;  font-weight: 700; margin: 0 0 1px; white-space: nowrap; text-align: left; }
+    .label-pkd     { font-size: 6px;  margin: 0 0 1px; white-space: nowrap; text-align: left; }
+    .label-fssai   { font-size: 5.5px; color: #4b5563; margin: 0; white-space: nowrap; text-align: left; }
+  }
+}
+
+// ─── Sheet grid (5 × 7 = 35 labels, A4 landscape) ────────────────────────────
+.label-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  gap: 2px;
+  border: 1px solid #9ca3af;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+
+.label-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border: 1px solid #6b7280;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111827;
+  overflow: hidden;
+
+  // ── Large preview (single label) ─────────────────────────────────────────
+  &--large {
+    width: 100%;
+    max-width: 560px;
+    min-height: 120px;
+    border-radius: 4px;
+
+    .label-logo {
+      width: 130px;
+      min-width: 130px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      border-right: 1px solid #d1d5db;
+      background: #fafafa;
+
+      &__img {
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+        display: block;
+      }
+
+      &__fallback {
+        margin-top: 4px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    // Header row: hindi name left, veg badge right — in normal flow
+    .label-header-row {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 3px;
+    }
+
+    .label-veg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 6px;
+
+      &__icon {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1.5px solid #16a34a;
+        display: block;
+      }
+
+      &__text {
+        font-size: 8px;
+        font-weight: 700;
+        color: #15803d;
+        white-space: nowrap;
+        line-height: 1.2;
+        margin-top: 1px;
+        text-align: center;
+      }
+    }
+
+    .label-hindi   { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 0; flex: 1; overflow: visible; white-space: normal; word-break: break-word; }
+    .label-english { font-size: 12px; font-weight: 500; color: #374151; margin: 0 0 2px; }
+    .label-info    { font-size: 12px; font-weight: 700; margin: 0 0 2px; white-space: nowrap; }
+    .label-pkd     { font-size: 11px; margin: 0 0 2px; white-space: nowrap; }
+    .label-fssai   { font-size: 10px; color: #4b5563; margin: 0; white-space: nowrap; }
+  }
+
+  // ── Mini (sheet grid cell) ────────────────────────────────────────────────
+  &--mini {
+    border-radius: 0;
+
+    .label-logo {
+      width: 90px;
+      min-width: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-right: 1px solid #d1d5db;
+      background: #fafafa;
+
+      &__img {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        display: block;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      padding: 3px 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    // Header row: hindi name left, veg badge right — in normal flow
+    .label-header-row {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 1px;
+    }
+
+    .label-veg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 2px;
+
+      &__icon {
+        width: 10px;
+        height: 10px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1px solid #16a34a;
+        display: block;
+      }
+
+      &__text {
+        font-size: 5px;
+        font-weight: 700;
+        color: #15803d;
+        line-height: 1;
+        white-space: nowrap;
+        text-align: center;
+      }
+    }
+
+    .label-hindi   { font-size: 9px; font-weight: 800; line-height: 1.25; margin: 0; flex: 1; overflow: visible; white-space: normal; word-break: break-word; }
+    .label-english { font-size: 7px;  color: #374151; margin: 0 0 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label-info    { font-size: 7px;  font-weight: 700; margin: 0 0 1px; white-space: nowrap; }
+    .label-pkd     { font-size: 6px;  margin: 0 0 1px; white-space: nowrap; }
+    .label-fssai   { font-size: 5.5px; color: #4b5563; margin: 0; white-space: nowrap; }
+  }
+}
+
+// ─── Sheet grid (5 × 6 = 30 labels) ─────────────────────────────────────────
+.label-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 2px;
+  border: 1px solid #9ca3af;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+
+.label-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border: 1px solid #6b7280;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111827;
+  overflow: hidden;
+
+  // ── Large preview (single label) ─────────────────────────────────────────
+  &--large {
+    width: 100%;
+    max-width: 560px;
+    min-height: 120px;
+    border-radius: 4px;
+
+    .label-logo {
+      width: 110px;
+      min-width: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      border-right: 1px solid #d1d5db;
+
+      &__img {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 2px solid #d1d5db;
+      }
+
+      &__fallback {
+        margin-top: 4px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      position: relative;
+      padding: 10px 12px 8px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .label-veg {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+
+      &__icon {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1.5px solid #16a34a;
+      }
+
+      &__text {
+        font-size: 9px;
+        font-weight: 700;
+        color: #15803d;
+        white-space: nowrap;
+      }
+    }
+
+    .label-hindi   { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 0 0 1px; }
+    .label-english { font-size: 12px; font-weight: 500; color: #374151; margin: 0 0 3px; }
+    .label-info    { font-size: 12px; font-weight: 700; margin: 0 0 2px; }
+    .label-pkd     { font-size: 11px; margin: 0 0 2px; }
+    .label-fssai   { font-size: 10px; color: #4b5563; margin: 0; }
+  }
+
+  // ── Mini (sheet grid cell) ────────────────────────────────────────────────
+  &--mini {
+    border-radius: 0;
+
+    .label-logo {
+      width: 30px;
+      min-width: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      border-right: 1px solid #d1d5db;
+
+      &__img {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1px solid #d1d5db;
+      }
+    }
+
+    .label-body {
+      flex: 1;
+      position: relative;
+      padding: 3px 4px 3px 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .label-veg {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      &__icon {
+        width: 9px;
+        height: 9px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1px solid #16a34a;
+      }
+
+      &__text {
+        font-size: 5px;
+        font-weight: 700;
+        color: #15803d;
+        line-height: 1;
+        white-space: nowrap;
+      }
+    }
+
+    .label-hindi   { font-size: 8px;  font-weight: 800; line-height: 1.2; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label-english { font-size: 6.5px; color: #374151; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .label-info    { font-size: 6px;   font-weight: 700; margin: 0; white-space: nowrap; }
+    .label-pkd     { font-size: 5.5px; margin: 0; white-space: nowrap; }
+    .label-fssai   { font-size: 5px;   color: #4b5563; margin: 0; white-space: nowrap; }
+  }
+}
+
+// ─── Sheet grid ──────────────────────────────────────────────────────────────
+.label-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 2px;
+  border: 1px solid #9ca3af;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 4px;
+}

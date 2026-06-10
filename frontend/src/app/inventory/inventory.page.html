@@ -15,73 +15,111 @@
     }
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    @for (item of items(); track item.id) {
-      <div
-        class="bg-white shadow rounded-2xl p-5 border border-gray-100 hover:shadow-lg transition-shadow"
-        [class.border-red-400]="item.total_stock <= item.low_stock_threshold"
-      >
-        <div class="flex justify-between items-start gap-3 mb-3">
-          <div>
-            <h2 class="text-xl font-extrabold text-gray-900">{{ item.hindi_name || item.item_name }}</h2>
-            <p class="text-sm text-gray-500">{{ item.item_name }}</p>
-            @if (item.description) {
-              <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
-            }
-          </div>
-          @if (item.total_stock <= item.low_stock_threshold) {
-            <span class="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded">Low Stock</span>
-          }
-        </div>
+  <!-- Search Bar -->
+  <div class="mb-6">
+    <input
+      type="text"
+      placeholder="Search by item name, Hindi name, or description..."
+      [(ngModel)]="searchQuery"
+      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
 
-        <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
-          <p>Stock: <strong>{{ item.total_stock }}</strong></p>
-          <p>Available: <strong>{{ item.total_stock - (item.reserved_stock ?? 0) }}</strong></p>
-          <p>Units/Sheet: <strong>{{ item.units_per_sheet }}</strong></p>
-          <p>Wholesale: <strong>&#x20B9;{{ item.wholesale_price_per_sheet }}/sheet</strong></p>
-          @if (item.quantity_per_unit) {
-            <p>Quantity/unit: <strong>{{ item.quantity_per_unit }}g</strong></p>
+  <!-- Inventory Table -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-100 border-b-2 border-gray-200">
+          <tr class="text-left">
+            <th class="px-4 py-3 font-semibold text-gray-700">Item Name</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Hindi Name</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Stock</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Available</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Units/Sheet</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Qty/Unit (g)</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">MRP</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Wholesale</th>
+            <th class="px-4 py-3 font-semibold text-gray-700 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredItems(); track item.id; let i = $index) {
+            <tr
+              class="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+              [class.bg-red-50]="item.total_stock <= item.low_stock_threshold"
+            >
+              <td class="px-4 py-3 font-medium text-gray-900">
+                {{ item.item_name }}
+                @if (item.description) {
+                  <p class="text-xs text-gray-500">{{ item.description }}</p>
+                }
+              </td>
+              <td class="px-4 py-3 text-gray-700">{{ item.hindi_name || '—' }}</td>
+              <td class="px-4 py-3 text-gray-700">
+                <span class="font-semibold">{{ item.total_stock }}</span>
+                @if (item.total_stock <= item.low_stock_threshold) {
+                  <span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-semibold">Low Stock</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-gray-700">{{ item.total_stock - (item.reserved_stock ?? 0) }}</td>
+              <td class="px-4 py-3 text-gray-700 text-center">{{ item.units_per_sheet }}</td>
+              <td class="px-4 py-3 text-gray-700 text-center">
+                @if (item.quantity_per_unit) {
+                  {{ item.quantity_per_unit }}g
+                } @else {
+                  —
+                }
+              </td>
+              <td class="px-4 py-3 text-gray-700">
+                @if (item.mrp_per_unit) {
+                  ₹{{ item.mrp_per_unit }}
+                } @else {
+                  —
+                }
+              </td>
+              <td class="px-4 py-3 text-gray-700 font-semibold">₹{{ item.wholesale_price_per_sheet }}</td>
+              <td class="px-4 py-3">
+                @if (isAdmin()) {
+                  <div class="flex gap-1 justify-center flex-wrap">
+                    <button
+                      (click)="downloadLabelSheet([item])"
+                      class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold"
+                      title="Download Labels"
+                    >
+                      ⬇️
+                    </button>
+                    <button
+                      (click)="openEditModal(item)"
+                      class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs px-2 py-1 rounded font-semibold"
+                      title="Edit"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      (click)="deleteItem(item)"
+                      class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-2 py-1 rounded font-semibold"
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                @if (searchQuery()) {
+                  No items match your search.
+                } @else {
+                  No inventory items yet.
+                }
+              </td>
+            </tr>
           }
-          @if (item.mrp_per_unit) {
-            <p>MRP/unit: <strong>&#x20B9;{{ item.mrp_per_unit }}</strong></p>
-          }
-          <p class="col-span-2">Production Cost: <strong>&#x20B9;{{ item.production_cost_per_sheet ?? 0 }}/sheet</strong></p>
-        </div>
-
-        @if (isAdmin()) {
-          <div class="mt-4 flex gap-2">
-            <button
-              class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
-              (click)="downloadLabelSheet([item])"
-            >
-              Download Labels
-            </button>
-            <button
-              class="flex-1 bg-teal-500 hover:bg-teal-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
-              (click)="downloadSingleLabel(item)"
-            >
-              Single Label
-            </button>
-            <button
-              class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg font-semibold"
-              (click)="openEditModal(item)"
-            >
-              Edit
-            </button>
-            <button
-              class="bg-red-50 hover:bg-red-100 text-red-600 text-sm px-3 py-2 rounded-lg font-semibold"
-              (click)="deleteItem(item)"
-              aria-label="Delete item"
-              title="Delete item"
-            >
-              🗑️
-            </button>
-          </div>
-        }
-      </div>
-    } @empty {
-      <p class="col-span-3 text-center text-gray-400 py-8">No inventory items yet.</p>
-    }
+        </tbody>
+      </table>
+    </div>
   </div>
 
   @if (showItemModal()) {
@@ -134,11 +172,7 @@
           </label>
 
           <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Production Cost / Sheet (&#x20B9;)</span>
-            <input [(ngModel)]="formProductionCostPerSheet" name="formProductionCostPerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
-          </label>
 
-          <label class="block">
             <span class="block text-sm font-medium text-gray-700 mb-1">Wholesale Price / Sheet (&#x20B9;)</span>
             <input [(ngModel)]="formWholesalePricePerSheet" name="formWholesalePricePerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
           </label>
@@ -158,4 +192,86 @@
       </div>
     </div>
   }
+
+  @if (showLabelPreview()) {
+    <div class="fixed inset-0 z-50 bg-black/60 flex items-start justify-center p-4 overflow-y-auto"
+         (click)="closeLabelPreview()">
+      <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 my-4" (click)="$event.stopPropagation()">
+
+        <!-- Modal header -->
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Label Preview</h2>
+            <p class="text-sm text-gray-500">Single label (top) &amp; full sheet of 25 (below).</p>
+          </div>
+          <div class="flex gap-2 items-center">
+            <button
+              (click)="downloadLabelSheet([previewItem()!])"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm"
+            >&#x2B07; Download Sheet (25 labels)</button>
+            <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none ml-2" (click)="closeLabelPreview()">&times;</button>
+          </div>
+        </div>
+
+        <!-- ─── SINGLE LABEL (large preview) ─── -->
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Single label</p>
+        @if (previewItem(); as item) {
+          <div class="label-card label-card--large">
+            <!-- Left: logo + veg stacked -->
+            <div class="label-logo">
+              <img src="assets/new-logo.png" alt="logo" class="label-logo__img" onerror="this.style.display='none'" />
+              <div class="label-veg">
+                <img src="assets/veg-icon.png" alt="veg" class="label-veg__icon" />
+                <span class="label-veg__text">100 % Veg</span>
+              </div>
+              <span class="label-logo__fallback">logo</span>
+            </div>
+            <!-- Right: content -->
+            <div class="label-body">
+              <div class="label-header-row">
+                <p class="label-hindi">{{ item.hindi_name || item.item_name }}</p>
+              </div>
+              <p class="label-english">{{ item.item_name }}</p>
+              <p class="label-info">
+                Net Wt: {{ item.quantity_per_unit ? item.quantity_per_unit + 'g' : '--' }}&nbsp;&nbsp;
+                MRP: &#x20B9;{{ item.mrp_per_unit ?? '--' }}
+              </p>
+              <p class="label-pkd">PKD: {{ pkdDate }} &nbsp;|&nbsp; Batch: {{ batchNo }}</p>
+              <p class="label-fssai">FSSAI: {{ labelSheetConfig.fssaiNo }}</p>
+            </div>
+          </div>
+        }
+
+        <!-- ─── SHEET PREVIEW (5 × 5 grid) ─── -->
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2">Sheet preview — 35 labels (A4 landscape, 5×7)</p>
+        <div class="label-sheet-grid">
+          @for (card of sheetPreviewCards; track $index) {
+            <div class="label-card label-card--mini">
+              <div class="label-logo">
+                <img src="assets/new-logo.png" alt="logo" class="label-logo__img" onerror="this.style.display='none'" />
+                <div class="label-veg">
+                  <img src="assets/veg-icon.png" alt="veg" class="label-veg__icon" />
+                  <span class="label-veg__text">100&nbsp;%&nbsp;Veg</span>
+                </div>
+              </div>
+              <div class="label-body">
+                <div class="label-header-row">
+                  <p class="label-hindi">{{ card.hindi_name || card.item_name }}</p>
+                </div>
+                <p class="label-english">{{ card.item_name }}</p>
+                <p class="label-info">
+                  Net Wt: {{ card.quantity_per_unit ? card.quantity_per_unit + 'g' : '--' }}
+                  &nbsp;MRP: &#x20B9;{{ card.mrp_per_unit ?? '--' }}
+                </p>
+                <p class="label-pkd">PKD: {{ pkdDate }} | {{ batchNo }}</p>
+                <p class="label-fssai">FSSAI: {{ labelSheetConfig.fssaiNo }}</p>
+              </div>
+            </div>
+          }
+        </div>
+
+      </div>
+    </div>
+  }
+
 </div>

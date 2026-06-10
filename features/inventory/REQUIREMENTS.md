@@ -17,7 +17,7 @@ Allow admins to manage the product catalog and stock levels for all spice produc
    - `units_per_sheet` — how many individual packets per sheet (e.g. 10 or 12)
    - `quantity_per_unit` — weight/volume per packet in grams (shown as label: **Quantity/unit**)
    - `mrp_per_unit` — printed MRP on individual packet (**MRP/unit**)
-   - `production_cost_per_sheet` — base cost to produce one sheet
+   - `wholesale_price_per_sheet` — selling price per sheet
    - `wholesale_price_per_sheet` — default selling price per sheet (pre-filled in delivery-boy cart)
 3. Stock level tracking with low-stock threshold alerts
 4. Display **available stock** = `total_stock − reserved_stock` in UI

@@ -108,7 +108,6 @@ export class SalesCartPage implements OnInit {
           wholesale_price_per_sheet:  ai.wholesale_price_per_sheet ?? 0,
           total_stock:                ai.qty,
           units_per_sheet:            0,
-          production_cost_per_sheet:  0, // not in loading doc; computed server-side at sale time
           low_stock_threshold:        0,
         }));
         this.allItems.set(items);

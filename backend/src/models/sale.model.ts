@@ -3,15 +3,19 @@ import { InferSchemaType, Schema, Types, model } from 'mongoose';
 const saleItemSchema = new Schema(
   {
     item_id:                   { type: Schema.Types.ObjectId, required: true, ref: 'Inventory' },
-    // sheets_sold: number of sheets sold for this item in this transaction
-    sheets_sold:               { type: Number, required: true, min: 1 },
-    // wholesale_price_per_sheet: price at time of sale (snapshot from inventory)
+    // sale_type: 'wholesale' = sell by sheet (delivery boys + admin); 'retail' = sell individual packets (admin only)
+    sale_type:                 { type: String, enum: ['wholesale', 'retail'], default: 'wholesale' },
+    // sheets_sold: canonical inventory unit. Whole number for wholesale; fractional (packets/units_per_sheet) for retail.
+    sheets_sold:               { type: Number, required: true, min: 0.001 },
+    // packets_sold: set only for retail sales; null for wholesale
+    packets_sold:              { type: Number, default: null },
+    // wholesale_price_per_sheet: snapshot from inventory at time of sale
     wholesale_price_per_sheet: { type: Number, required: true, min: 0, default: 0 },
-    // discount_amount: per-sheet discount negotiated at point of sale by delivery boy
+    // discount_amount: per-sheet discount (wholesale) or per-packet discount (retail)
     discount_amount:           { type: Number, required: true, min: 0, default: 0 },
-    // final_price: (wholesale_price_per_sheet − discount_amount) × sheets_sold
+    // final_price: revenue collected for this line item (backend-computed, never trust frontend)
     final_price:               { type: Number, required: true, min: 0, default: 0 },
-    // profit: (final_price_per_sheet − production_cost_per_sheet) × sheets_sold
+    // profit: final_price minus production cost allocated to sheets consumed
     profit:                    { type: Number, required: true, default: 0 },
     item_name:                 { type: String, required: true, trim: true, default: '' },
     hindi_name:                { type: String, trim: true, default: '' },
@@ -37,7 +41,7 @@ const saleSchema = new Schema(
     total_amount:   { type: Number, required: true, min: 0 },
     // total_discount: sum of (discount_amount × sheets_sold) per item — measures discount impact on revenue
     total_discount: { type: Number, required: true, min: 0, default: 0 },
-    // total_profit: sum of (final_price − production_cost) per item — realized gross profit before expenses
+    // total_profit: sum of (final_price × 0.10) per item — realized gross profit (10% margin on selling price)
     total_profit:   { type: Number, required: true, default: 0 },
     payment_mode:   { type: String, enum: ['cash', 'online', 'pending'], required: true, default: 'cash' },
     timestamp:    { type: Date, required: true, default: () => new Date(), index: true },

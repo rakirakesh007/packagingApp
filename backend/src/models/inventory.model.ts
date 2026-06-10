@@ -50,13 +50,6 @@ const inventorySchema = new Schema(
       min: 0,
       default: 0,
     },
-    // production_cost_per_sheet: total base cost to produce one sheet (materials + packaging + assembly)
-    production_cost_per_sheet: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
-    },
     // wholesale_price_per_sheet: default selling price per sheet; pre-filled in delivery boy cart
     wholesale_price_per_sheet: {
       type: Number,

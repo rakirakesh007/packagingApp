@@ -13,6 +13,30 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
+/** GET /inventory/low-stock — items at or below threshold. */
+router.get('/low-stock', async (_req: Request, res: Response) => {
+  try {
+    // available_stock = total_stock − reserved_stock; alert when it drops to or below threshold
+    const items = await InventoryModel.find({
+      $expr: { $lte: [{ $subtract: ['$total_stock', '$reserved_stock'] }, '$low_stock_threshold'] },
+    });
+    return res.json({ success: true, data: items });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+/** GET /inventory/:id — get a single item by ID. */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const item = await InventoryModel.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Item not found.' });
+    return res.json(item);
+  } catch (error) {
+    return res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
 /** POST /inventory — create a new inventory item. */
 router.post('/', async (req: Request, res: Response) => {
   try {
@@ -42,19 +66,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
     return res.json({ message: 'Deleted successfully.' });
   } catch (error) {
     return res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
-  }
-});
-
-/** GET /inventory/low-stock — items at or below threshold. */
-router.get('/low-stock', async (_req: Request, res: Response) => {
-  try {
-    // available_stock = total_stock − reserved_stock; alert when it drops to or below threshold
-    const items = await InventoryModel.find({
-      $expr: { $lte: [{ $subtract: ['$total_stock', '$reserved_stock'] }, '$low_stock_threshold'] },
-    });
-    return res.json({ success: true, data: items });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 

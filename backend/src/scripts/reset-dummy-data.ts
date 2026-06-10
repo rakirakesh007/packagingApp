@@ -9,7 +9,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const COLLECTIONS = ['inventories', 'sales', 'loadings'];
+// All collections EXCEPT 'users' (admin login preserved)
+const COLLECTIONS = [
+  'inventories',
+  'sales',
+  'loadings',
+  'assignments',
+  'expenses',
+  'shops',
+  'marketingtemplates',
+];
 
 async function reset(): Promise<void> {
   const uri = process.env['MONGO_URI'] || 'mongodb://localhost:27017/spice_app';

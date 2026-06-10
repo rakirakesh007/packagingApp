@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map } from 'rxjs/operators';
+import { map, forkJoin, of } from 'rxjs';
 import { InventoryItem } from '../models/inventory.model';
 
 /** Raw shape returned by MongoDB (uses _id). */
@@ -27,6 +27,11 @@ export class InventoryService {
     return this.http.get<RawInventoryItem>(`/inventory/${id}`).pipe(
       map(this.mapItem)
     );
+  }
+
+  getItemsByIds(ids: string[]) {
+    if (ids.length === 0) return of([]);
+    return forkJoin(ids.map((id) => this.getItemById(id)));
   }
 
   /** PATCH /inventory/:id — used by admin to update total_stock. */

@@ -11,8 +11,6 @@ export interface InventoryItem {
   mrp_per_unit?: number;
   total_stock: number;
   reserved_stock?: number;
-  // production_cost_per_sheet: base cost to produce one sheet
-  production_cost_per_sheet?: number;
   // wholesale_price_per_sheet: default selling price per sheet
   wholesale_price_per_sheet: number;
   low_stock_threshold: number;

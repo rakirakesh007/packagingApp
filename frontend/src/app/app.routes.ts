@@ -8,6 +8,12 @@ export const routes: Routes = [
       import('./auth/login.component').then((m) => m.LoginComponent),
   },
   {
+    path: 'label-sheet',
+    loadComponent: () =>
+      import('./label-sheet/label-sheet.component').then((m) => m.LabelSheetComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: 'app',
     loadComponent: () =>
       import('./app-shell/app-shell.component').then((m) => m.AppShellComponent),

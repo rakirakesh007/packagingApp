@@ -24,7 +24,7 @@ Enable delivery boys to record sales at shops during their daily route, tracking
 
 ## Pricing at Sale
 - `final_price = (wholesale_price_per_sheet − discount_amount) × sheets_sold`
-- `profit = (final_price_per_sheet − production_cost_per_sheet) × sheets_sold`
+- `profit = final_price × 0.10` (10% margin on final selling price)
 - All totals computed **server-side**; client sends only `sheets_sold` + `discount_amount`
 
 ## WhatsApp Bill Format

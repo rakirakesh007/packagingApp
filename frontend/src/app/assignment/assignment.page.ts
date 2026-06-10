@@ -17,6 +17,7 @@ import { AssignmentService, User } from '../services/assignment.service';
 import { InventoryService } from '../services/inventory.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { InventoryItem } from '../models/inventory.model';
+import { getPricingRule } from '../core/pricing.config';
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
@@ -88,11 +89,16 @@ export class AssignmentPage implements OnInit {
   private buildRows(items: InventoryItem[]): void {
     this.rows.clear();
     for (const item of items) {
+      // Get correct wholesale price from pricing config based on MRP
+      const rule = getPricingRule(item.mrp_per_unit || 0);
+      const correctWholesalePrice = rule?.wholesalePricePerSheet ?? item.wholesale_price_per_sheet ?? 0;
+
       this.rows.push(this.fb.group({
         item_id:         [item.id],
         item_name:       [item.item_name],
         hindi_name:      [item.hindi_name ?? ''],
-        wholesale_price_per_sheet: [item.wholesale_price_per_sheet],
+        mrp_per_unit:    [item.mrp_per_unit ?? 0],
+        wholesale_price_per_sheet: [correctWholesalePrice],
         warehouse_stock: [item.total_stock],
         assignedQty: [0, [Validators.min(0), Validators.max(item.total_stock)]],
       }));

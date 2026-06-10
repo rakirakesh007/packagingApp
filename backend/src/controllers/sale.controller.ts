@@ -91,7 +91,6 @@ const buildSaleItems = async (items: CreateSaleItemInput[]): Promise<Array<{
   return items.map((item) => {
     const inv = inventoryMap.get(item.item_id);
     const wholesale      = inv?.wholesale_price_per_sheet ?? 0;
-    const productionCost = inv?.production_cost_per_sheet ?? 0;
     const discount       = item.discount_amount ?? 0;
     const finalPerSheet  = Math.max(0, wholesale - discount);
     return {
@@ -100,7 +99,7 @@ const buildSaleItems = async (items: CreateSaleItemInput[]): Promise<Array<{
       wholesale_price_per_sheet: wholesale,
       discount_amount:           discount,
       final_price:               finalPerSheet * item.sheets_sold,
-      profit:                    (finalPerSheet - productionCost) * item.sheets_sold,
+      profit:                    finalPerSheet * 0.10 * item.sheets_sold,
       item_name:                 inv?.item_name  ?? item.item_name  ?? '',
       hindi_name:                inv?.hindi_name ?? item.hindi_name ?? '',
       description:               inv?.description ?? item.description ?? '',

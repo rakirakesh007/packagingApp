@@ -22,3 +22,48 @@ body {
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── PRINT STYLES - Hide navigation and menus ────────────────────────────── */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  /* Hide common navigation/menu elements */
+  nav,
+  header,
+  footer,
+  .navbar,
+  .menu,
+  .sidebar,
+  .navigation,
+  app-shell,
+  ion-header,
+  ion-footer,
+  ion-menu,
+  [role="navigation"],
+  [role="menubar"],
+  [role="contentinfo"],
+  .admin-panel-nav,
+  .top-menu,
+  .app-header,
+  .app-menu {
+    display: none !important;
+  }
+
+  /* Ensure label sheet takes full page */
+  app-label-sheet {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .label-sheet {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

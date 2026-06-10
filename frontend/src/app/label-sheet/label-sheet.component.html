@@ -1,0 +1,68 @@
+<div class="label-sheet">
+  @if (labels().length === 0) {
+    <div style="padding: 40px 20px; text-align: center; color: #999; grid-column: 1 / -1; font-size: 16px;">
+      <p>Go to Inventory page and click download labels on an item</p>
+    </div>
+  } @else {
+    @for (item of labels(); track $index) {
+      <div class="label-card">
+        <!-- Left: Logo Column -->
+        <div class="logo-column">
+          @if (logoDataUrl()) {
+            <img [src]="logoDataUrl()" alt="Logo" class="brand-logo" />
+          } @else {
+            <div class="logo-placeholder">Logo</div>
+          }
+
+          <!-- Veg Icon + Text (centered block) -->
+          <div class="veg-badge">
+            @if (vegDataUrl()) {
+              <img [src]="vegDataUrl()" alt="Veg" class="veg-icon" />
+            }
+            <span class="veg-text">100 % Veg</span>
+          </div>
+        </div>
+
+        <!-- Right: Content Column -->
+        <div class="content-column">
+          @if (item) {
+            <!-- Hindi Name -->
+            <div class="item-name-hindi">
+              {{ item.hindi_name || item.item_name || 'Product' }}
+            </div>
+
+            <!-- Product Name -->
+            <div class="item-name-english">
+              {{ item.item_name || '' }}
+            </div>
+
+            <!-- Net Weight & MRP -->
+            <div class="specs-line">
+              <span>Net Wt: {{ item.quantity_per_unit ? item.quantity_per_unit + 'g' : '--' }} | MRP: ₹{{ item.mrp_per_unit || '--' }}</span>
+            </div>
+
+            <!-- PKD Date & Batch -->
+            <div class="specs-line">
+              <span>PKD: {{ pkdMonthYear() }} | Batch: {{ batchNumber() }}</span>
+            </div>
+
+            <!-- FSSAI & License (inline, vertically centered) -->
+            <div class="fssai-section">
+              <img src="assets/fssai-logo.png" alt="FSSAI Logo" class="fssai-logo" />
+              <span class="fssai-text">Lic No. : {{ labelSheetConfig.fssaiNo }}</span>
+            </div>
+          } @else {
+            <!-- Placeholder content -->
+            <div class="item-name-hindi" style="color: #ccc;">Sample Product</div>
+            <div class="item-name-english" style="color: #ddd;">Product Name</div>
+            <div class="specs-line" style="color: #ddd;">Net Wt: -- MRP: --</div>
+            <div class="specs-line" style="color: #ddd;">PKD: -- | Batch: --</div>
+            <div class="fssai-section" style="color: #ddd;">
+              <span>FSSAI Placeholder</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

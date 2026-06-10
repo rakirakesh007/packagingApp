@@ -1,10 +1,19 @@
 <div class="p-4">
   <h1 class="text-2xl font-bold mb-1">Admin Bulk Entry</h1>
-  <p class="text-sm text-gray-500 mb-4">Enter yesterday's paper sales in bulk. Item prices auto-fill from inventory.</p>
+  <p class="text-sm text-gray-500 mb-4">
+    Record sales in bulk. Toggle <strong class="text-blue-600">Sheet</strong> (wholesale — sell full sheets) or
+    <strong class="text-orange-500">Pkt</strong> (retail — sell individual packets at MRP) per row.
+    Prices auto-fill from inventory.
+  </p>
 
   @if (submitSuccess()) {
     <div class="mb-4 p-3 bg-green-100 text-green-800 border border-green-300 rounded">
       &#10003; Bulk entry saved successfully!
+    </div>
+  }
+  @if (errorMsg()) {
+    <div class="mb-4 p-3 bg-red-100 text-red-800 border border-red-300 rounded">
+      &#10007; {{ errorMsg() }}
     </div>
   }
 
@@ -16,13 +25,14 @@
             <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Shop Name *</th>
             <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Mobile</th>
             <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Item *</th>
-            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Hindi Name</th>
-            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Wholesale/Sheet</th>
-            <th class="border border-gray-300 px-3 py-2">Sheets</th>
-            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Discount/Sheet</th>
-            <th class="border border-gray-300 px-3 py-2">Subtotal</th>
-            <th class="border border-gray-300 px-3 py-2">Profit</th>
-            <th class="border border-gray-300 px-3 py-2"></th>
+            <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Type</th>
+            <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Qty</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap text-center">Rate</th>
+            <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Disc/Unit</th>
+            <th class="border border-gray-300 px-3 py-2 text-right">Subtotal</th>
+            <th class="border border-gray-300 px-3 py-2 text-center whitespace-nowrap">MRP</th>
+            <th class="border border-gray-300 px-3 py-2 text-right">Profit</th>
+            <th class="border border-gray-300 px-2 py-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -62,7 +72,9 @@
                       @if (opt.hindi_name) {
                         <span class="text-xs text-gray-400 ml-1">({{ opt.item_name }})</span>
                       }
-                      <span class="text-xs text-gray-400 ml-2">₹{{ opt.wholesale_price_per_sheet }}/sheet</span>
+                      <span class="text-xs text-gray-400 ml-2">
+                        ₹{{ opt.wholesale_price_per_sheet }}/sheet &nbsp;|&nbsp; ₹{{ opt.mrp_per_unit ?? 0 }}/pkt
+                      </span>
                     </mat-option>
                   }
                 </mat-autocomplete>
@@ -75,75 +87,112 @@
                 />
               </td>
 
-              <!-- Hindi Name -->
-              <td class="border border-gray-300 p-1 min-w-[160px]">
-                <input
-                  formControlName="itemHindiName"
-                  class="w-full border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded bg-gray-50"
-                  placeholder="Hindi name"
-                  readonly
-                />
+              <!-- Sale Type toggle: Sheet (wholesale) | Pkt (retail) -->
+              <td class="border border-gray-300 p-1 text-center">
+                <div class="inline-flex rounded overflow-hidden border border-gray-300 text-xs font-semibold">
+                  <button
+                    type="button"
+                    (click)="setType(i, 'wholesale')"
+                    [class]="row.value.sale_type === 'wholesale'
+                      ? 'px-2 py-1 bg-blue-600 text-white'
+                      : 'px-2 py-1 bg-white text-gray-500 hover:bg-gray-100'"
+                    title="Wholesale: sell by sheets"
+                  >Sheet</button>
+                  <button
+                    type="button"
+                    (click)="setType(i, 'retail')"
+                    [class]="row.value.sale_type === 'retail'
+                      ? 'px-2 py-1 bg-orange-500 text-white'
+                      : 'px-2 py-1 bg-white text-gray-500 hover:bg-gray-100'"
+                    title="Retail: sell individual packets at MRP"
+                  >Pkt</button>
+                </div>
               </td>
 
-              <!-- Wholesale Price (readonly) -->
+              <!-- Quantity (sheets or packets depending on type) -->
               <td class="border border-gray-300 p-1">
                 <input
-                  formControlName="wholesale_price_per_sheet"
-                  type="number" min="0"
-                  class="w-28 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded bg-gray-50"
-                  readonly
+                  formControlName="quantity_sold"
+                  type="number"
+                  min="1"
+                  class="w-16 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded text-center"
+                  [placeholder]="row.value.sale_type === 'retail' ? 'Pkts' : 'Sheets'"
                 />
               </td>
 
-              <!-- Sheets Sold -->
-              <td class="border border-gray-300 p-1">
-                <input
-                  formControlName="sheets_sold"
-                  type="number" min="1"
-                  class="w-16 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
-                />
+              <!-- Rate (auto-filled from pricing config) -->
+              <td class="border border-gray-300 px-2 py-1 text-center whitespace-nowrap">
+                @if (row.value.sale_type === 'retail') {
+                  <span class="text-xs font-mono text-orange-600">
+                    &#x20B9;{{ ((row.value.wholesale_price_per_sheet ?? 0) / (row.value.units_per_sheet || 1)) | number:'1.0-2' }}/pkt
+                  </span>
+                } @else {
+                  <span class="text-xs font-mono text-blue-600">₹{{ row.value.wholesale_price_per_sheet }}/sheet</span>
+                }
               </td>
 
-              <!-- Discount / Sheet -->
+              <!-- Discount per unit (per sheet for wholesale, per packet for retail) -->
               <td class="border border-gray-300 p-1">
                 <input
                   formControlName="discount_amount"
-                  type="number" min="0"
-                  class="w-24 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                  type="number"
+                  min="0"
+                  class="w-20 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
                   placeholder="0"
                 />
               </td>
 
               <!-- Subtotal -->
               <td class="border border-gray-300 px-3 py-1 text-right font-mono">
-                {{ (row.value.sheets_sold || 0) * ((row.value.wholesale_price_per_sheet || 0) - (row.value.discount_amount || 0)) | number:'1.0-0' }}
+                ₹{{ rowSubtotal(i) | number:'1.0-0' }}
               </td>
-
+              <!-- Commission: delivery boy (wholesale) or my profit (retail) -->
+              <td class="border border-gray-300 px-3 py-1 text-right font-mono text-blue-700">
+                &#x20B9;{{ row.value.commission_per_sheet ?? 0 }}
+              </td>
               <!-- Profit -->
-              <td class="border border-gray-300 px-3 py-1 text-right font-mono"
-                  [class.text-green-600]="(row.value.sheets_sold||0)*((row.value.wholesale_price_per_sheet||0)-(row.value.discount_amount||0)-(row.value.production_cost_per_sheet||0)) > 0"
-                  [class.text-red-500]="(row.value.sheets_sold||0)*((row.value.wholesale_price_per_sheet||0)-(row.value.discount_amount||0)-(row.value.production_cost_per_sheet||0)) < 0">
-                {{ (row.value.sheets_sold || 0) * ((row.value.wholesale_price_per_sheet || 0) - (row.value.discount_amount || 0) - (row.value.production_cost_per_sheet || 0)) | number:'1.0-0' }}
+              <td
+                class="border border-gray-300 px-3 py-1 text-right font-mono"
+                [class.text-green-600]="rowProfit(i) > 0"
+                [class.text-red-500]="rowProfit(i) < 0"
+              >
+                ₹{{ rowProfit(i) | number:'1.0-0' }}
               </td>
 
               <!-- Remove -->
               <td class="border border-gray-300 px-2 py-1 text-center">
-                <button type="button" (click)="removeRow(i)"
+                <button
+                  type="button"
+                  (click)="removeRow(i)"
                   class="text-red-400 hover:text-red-600 font-bold text-lg leading-none"
-                  aria-label="Remove row">&times;</button>
+                  aria-label="Remove row"
+                >&times;</button>
               </td>
             </tr>
           }
         </tbody>
         <tfoot class="bg-gray-50 font-bold">
           <tr>
-            <td colspan="9" class="border border-gray-300 px-3 py-2 text-right">Totals:</td>
+            <td colspan="7" class="border border-gray-300 px-3 py-2 text-right text-gray-600">Grand Totals:</td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono">&#x20B9;{{ grandTotal() | number:'1.0-0' }}</td>
+            <td class="border border-gray-300"></td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono text-green-700">&#x20B9;{{ totalProfit() | number:'1.0-0' }}</td>
             <td class="border border-gray-300"></td>
           </tr>
         </tfoot>
       </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
+      <span>
+        <span class="inline-block w-3 h-3 rounded bg-blue-600 mr-1"></span>
+        <strong>Sheet</strong> — wholesale; profit = (wholesale × 0.10 − discount) per sheet.
+      </span>
+      <span>
+        <span class="inline-block w-3 h-3 rounded bg-orange-500 mr-1"></span>
+        <strong>Pkt</strong> — retail at (wholesale ÷ units)/pkt; profit = (wholesale × 0.10 + commission) per sheet used.
+      </span>
     </div>
 
     <div class="flex items-center gap-3 mt-4">

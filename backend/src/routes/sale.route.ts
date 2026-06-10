@@ -9,14 +9,13 @@ async function buildSaleItems(
   items: Array<{ item_id: string; sheets_sold: number; discount_amount?: number; item_name?: string; hindi_name?: string; description?: string }>,
 ): Promise<Array<{ item_id: string; sheets_sold: number; wholesale_price_per_sheet: number; discount_amount: number; final_price: number; profit: number; item_name: string; hindi_name: string; description: string }>> {
   const inventoryDocs = await InventoryModel.find({ _id: { $in: items.map((item) => item.item_id) } }).lean();
-  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number; production_cost_per_sheet?: number }>(
+  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number }>(
     inventoryDocs.map((doc) => [String(doc._id), doc])
   );
 
   return items.map((item) => {
     const inv = inventoryMap.get(item.item_id);
     const wholesale     = inv?.wholesale_price_per_sheet ?? 0;
-    const productionCost = inv?.production_cost_per_sheet ?? 0;
     const discount       = item.discount_amount ?? 0;
     const finalPerSheet  = Math.max(0, wholesale - discount);
     return {
@@ -25,7 +24,7 @@ async function buildSaleItems(
       wholesale_price_per_sheet: wholesale,
       discount_amount:           discount,
       final_price:               finalPerSheet * item.sheets_sold,
-      profit:                    (finalPerSheet - productionCost) * item.sheets_sold,
+      profit:                    finalPerSheet * 0.10 * item.sheets_sold,
       item_name:                 inv?.item_name  ?? item.item_name  ?? '',
       hindi_name:                inv?.hindi_name ?? item.hindi_name ?? '',
       description:               inv?.description ?? item.description ?? '',
@@ -135,19 +134,23 @@ router.post('/bulk', async (req: Request, res: Response) => {
   }
 
   try {
+    // ── Normalise incoming rows ──────────────────────────────────────────────
     const normalizedRows = rows.map((row: Record<string, unknown>) => {
-      const itemId        = String(row['item'] ?? row['itemId'] ?? row['item_id'] ?? '');
-      const sheets_sold   = Number(row['sheets_sold'] ?? row['quantity'] ?? 0);
-      const discount_amount = Number(row['discount_amount'] ?? 0);
-
+      const itemId       = String(row['item'] ?? row['itemId'] ?? row['item_id'] ?? '');
+      const saleType     = String(row['sale_type'] ?? 'wholesale') as 'wholesale' | 'retail';
+      const unitType     = String(row['unit_type'] ?? 'sheet') as 'sheet' | 'packet';
+      const quantitySold = Number(row['quantity_sold'] ?? row['sheets_sold'] ?? row['quantity'] ?? 0);
+      const discountAmount = Number(row['discount_amount'] ?? 0);
       return {
-        shopName: String(row['shopName'] ?? ''),
-        shopMobile: String(row['shopMobile'] ?? ''),
+        shopName:      String(row['shopName'] ?? ''),
+        shopMobile:    String(row['shopMobile'] ?? ''),
         itemId,
-        sheets_sold,
-        discount_amount,
-        itemName: String(row['itemName'] ?? ''),
-        hindiName: String(row['hindiName'] ?? ''),
+        saleType,
+        unitType,
+        quantitySold,
+        discountAmount,
+        itemName:    String(row['itemName'] ?? ''),
+        hindiName:   String(row['hindiName'] ?? ''),
         description: String(row['description'] ?? ''),
       };
     });
@@ -173,47 +176,78 @@ router.post('/bulk', async (req: Request, res: Response) => {
         )
     );
 
+    // ── Build sale documents ─────────────────────────────────────────────────
+    const saleDocuments = normalizedRows.map((row) => {
+      const inv          = inventoryMap.get(row.itemId);
+      const wholesale    = inv?.wholesale_price_per_sheet ?? 0;
+      const unitsPerSheet = Math.max(1, inv?.units_per_sheet ?? 10);
+      const mrpPerUnit   = inv?.mrp_per_unit ?? 0;
+      const discount     = row.discountAmount;
+
+      let sheetsSold: number;
+      let packetsSold: number | null;
+      let finalPrice: number;
+      let profit: number;
+
+      if (row.saleType === 'retail') {
+        // Retail: quantity is in individual packets
+        packetsSold  = row.quantitySold;
+        sheetsSold   = packetsSold / unitsPerSheet;           // fractional sheets consumed
+        finalPrice   = Math.max(0, mrpPerUnit - discount) * packetsSold;
+        profit       = finalPrice * 0.10;                    // 10% profit margin
+      } else {
+        // Wholesale: quantity is in sheets
+        sheetsSold  = row.quantitySold;
+        packetsSold = null;
+        const finalPerSheet = Math.max(0, wholesale - discount);
+        finalPrice  = finalPerSheet * sheetsSold;
+        profit      = finalPerSheet * 0.10 * sheetsSold;
+      }
+
+      return {
+        // ─ sale document ─
+        delivery_boy_id: null,
+        customer_name:   row.shopName,
+        shop_name:       row.shopName,
+        items: [
+          {
+            item_id:                   row.itemId,
+            sale_type:                 row.saleType,
+            sheets_sold:               sheetsSold,
+            packets_sold:              packetsSold,
+            wholesale_price_per_sheet: wholesale,
+            discount_amount:           discount,
+            final_price:               finalPrice,
+            profit,
+            item_name:   inv?.item_name  ?? row.itemName  ?? '',
+            hindi_name:  inv?.hindi_name ?? row.hindiName ?? '',
+            description: inv?.description ?? row.description ?? '',
+          },
+        ],
+        total_amount:   finalPrice,
+        total_discount: row.saleType === 'retail'
+          ? discount * (packetsSold ?? 0)
+          : discount * sheetsSold,
+        total_profit:   profit,
+        payment_mode:   'cash',
+        // ─ for stock deduction (keep alongside doc for the $inc loop below) ─
+        _itemId:    row.itemId,
+        _sheetsDelta: sheetsSold,
+      };
+    });
+
     const sales = await SaleModel.insertMany(
-      normalizedRows.map((row) => {
-        const inv             = inventoryMap.get(row.itemId);
-        const wholesale       = inv?.wholesale_price_per_sheet ?? 0;
-        const productionCost  = inv?.production_cost_per_sheet ?? 0;
-        const discount        = row.discount_amount;
-        const finalPerSheet   = Math.max(0, wholesale - discount);
-        const final_price     = finalPerSheet * row.sheets_sold;
-        const profit          = (finalPerSheet - productionCost) * row.sheets_sold;
-        return {
-          delivery_boy_id: null, // admin bulk entry — no delivery boy
-          customer_name: row.shopName,
-          shop_name: row.shopName,
-          items: [
-            {
-              item_id:                   row.itemId,
-              sheets_sold:               row.sheets_sold,
-              wholesale_price_per_sheet: wholesale,
-              discount_amount:           discount,
-              final_price,
-              profit,
-              item_name:   inv?.item_name  ?? row.itemName  ?? '',
-              hindi_name:  inv?.hindi_name ?? row.hindiName ?? '',
-              description: inv?.description ?? row.description ?? '',
-            },
-          ],
-          total_amount:   final_price,
-          total_discount: discount * row.sheets_sold,
-          total_profit:   profit,
-          payment_mode: 'cash',
-        };
-      })
+      // strip the internal _itemId/_sheetsDelta helpers before inserting
+      saleDocuments.map(({ _itemId: _a, _sheetsDelta: _b, ...doc }) => doc)
     );
 
-    // Admin bulk entry: no delivery boy assignment, so no reserved_stock was incremented.
-    // Only decrement total_stock.
+    // ── Decrement total_stock by sheets consumed (fractional for retail) ─────
+    // Admin bulk entry has no delivery boy assignment, so reserved_stock is untouched.
     await Promise.all(
-      normalizedRows.map((row) =>
+      saleDocuments.map(({ _itemId, _sheetsDelta }) =>
         InventoryModel.findByIdAndUpdate(
-          row.itemId,
-          { $inc: { total_stock: -row.sheets_sold } }
+          _itemId,
+          { $inc: { total_stock: -_sheetsDelta } }
         )
       )
     );

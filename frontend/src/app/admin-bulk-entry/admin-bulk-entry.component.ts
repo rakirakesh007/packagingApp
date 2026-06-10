@@ -23,18 +23,40 @@ import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { InventoryService } from '../services/inventory.service';
 import { InventoryItem } from '../models/inventory.model';
+import { getPricingRule } from '../core/pricing.config';
+
+export type SaleType = 'wholesale' | 'retail';
 
 interface SaleRowControls {
-  shopName:       FormControl<string>;
-  shopMobile:     FormControl<string>;
-  itemId:         FormControl<string>;
-  itemSearch:     FormControl<string>;
-  itemHindiName:  FormControl<string>;
-  sheets_sold:    FormControl<number>;
-  discount_amount: FormControl<number>;
+  shopName:                  FormControl<string>;
+  shopMobile:                FormControl<string>;
+  itemId:                    FormControl<string>;
+  itemSearch:                FormControl<string>;
+  itemHindiName:             FormControl<string>;
+  /** 'wholesale' = sell by sheet | 'retail' = sell individual packets */
+  sale_type:                 FormControl<SaleType>;
+  /** Sheets (wholesale) or packets (retail) — as entered by admin */
+  quantity_sold:             FormControl<number>;
+  discount_amount:           FormControl<number>;
   wholesale_price_per_sheet: FormControl<number>;
-  production_cost_per_sheet: FormControl<number>;
+  /** Individual packets packed per sheet for this item */
+  units_per_sheet:           FormControl<number>;
+  /** MRP printed on individual packet — used as rate for retail sales */
+  mrp_per_unit:              FormControl<number>;
+  /** Delivery-boy commission per sheet (wholesale). For retail = my profit per sheet */
+  commission_per_sheet:      FormControl<number>;
 }
+
+/** Partial mirror of SaleRowControls values for calculation helpers */
+type RowValue = Partial<{
+  sale_type:                 SaleType;
+  quantity_sold:             number;
+  discount_amount:           number;
+  wholesale_price_per_sheet: number;
+  units_per_sheet:           number;
+  mrp_per_unit:              number;
+  commission_per_sheet:      number;
+}>;
 
 @Component({
   selector: 'app-admin-bulk-entry',
@@ -71,22 +93,18 @@ export class AdminBulkEntryComponent implements OnInit {
     return this.bulkEntryForm.get('rows') as FormArray<FormGroup<SaleRowControls>>;
   }
 
-  // Live totals (updated via form.valueChanges — avoids computed()+FormArray mismatch)
-  grandTotal   = signal(0);
-  totalProfit  = signal(0);
+  grandTotal    = signal(0);
+  totalProfit   = signal(0);
   submitSuccess = signal(false);
+  errorMsg      = signal('');
 
   ngOnInit(): void {
-    // Load inventory once
     this.inventorySvc.getItems().subscribe({
       next: (items) => {
         this.inventoryItems.set(items);
-        // Initialise filteredOptions for the first row
         this.filteredOptions.set([items]);
       },
     });
-
-    // Recompute totals on every value change
     this.bulkEntryForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.recalcTotals());
@@ -94,26 +112,27 @@ export class AdminBulkEntryComponent implements OnInit {
 
   createRow(): FormGroup<SaleRowControls> {
     return this.fb.group({
-      shopName:       this.fb.control('', Validators.required),
-      shopMobile:     this.fb.control(''),
-      itemId:         this.fb.control('', Validators.required),
-      itemSearch:     this.fb.control('', Validators.required),
-      itemHindiName:  this.fb.control(''),
-      sheets_sold:    this.fb.control(0, [Validators.required, Validators.min(1)]),
-      discount_amount: this.fb.control(0, [Validators.min(0)]),
+      shopName:                  this.fb.control('', Validators.required),
+      shopMobile:                this.fb.control(''),
+      itemId:                    this.fb.control('', Validators.required),
+      itemSearch:                this.fb.control('', Validators.required),
+      itemHindiName:             this.fb.control(''),
+      sale_type:                 this.fb.control<SaleType>('wholesale'),
+      quantity_sold:             this.fb.control(0, [Validators.required, Validators.min(1)]),
+      discount_amount:           this.fb.control(0, [Validators.min(0)]),
       wholesale_price_per_sheet: this.fb.control(0),
-      production_cost_per_sheet: this.fb.control(0),
+      units_per_sheet:           this.fb.control(10),
+      mrp_per_unit:              this.fb.control(0),
+      commission_per_sheet:      this.fb.control(0),
     });
   }
 
   addRow(): void {
     this.rows.push(this.createRow());
-    // Add empty filter list for new row
     this.filteredOptions.update((opts) => [...opts, this.inventoryItems()]);
-    // Auto-focus shopName of the new row
     setTimeout(() => {
-      const shopInputs = document.querySelectorAll<HTMLInputElement>('.shop-name-input');
-      shopInputs[shopInputs.length - 1]?.focus();
+      const inputs = document.querySelectorAll<HTMLInputElement>('.shop-name-input');
+      inputs[inputs.length - 1]?.focus();
     }, 0);
   }
 
@@ -122,6 +141,12 @@ export class AdminBulkEntryComponent implements OnInit {
       this.rows.removeAt(index);
       this.filteredOptions.update((opts) => opts.filter((_, i) => i !== index));
     }
+  }
+
+  /** Switch sale type and reset discount to 0 to avoid stale per-unit values */
+  setType(rowIndex: number, type: SaleType): void {
+    this.rows.at(rowIndex).patchValue({ sale_type: type, discount_amount: 0 });
+    this.recalcTotals();
   }
 
   // ── Autocomplete ──────────────────────────────────────────────────────────
@@ -135,18 +160,25 @@ export class AdminBulkEntryComponent implements OnInit {
     this.filteredOptions.update((opts) =>
       opts.map((o, i) => (i === rowIndex ? filtered : o))
     );
-    // Clear the hidden itemId if the user is typing (not yet selected)
     this.rows.at(rowIndex).get('itemId')?.setValue('');
   }
 
   selectItem(item: InventoryItem, rowIndex: number): void {
     const row = this.rows.at(rowIndex);
+    const mrp = item.mrp_per_unit ?? 0;
+    const rule = getPricingRule(mrp);
+    
+    // Use pricing rule's wholesale price (source of truth); fall back to inventory if no rule
+    const wholesalePrice = rule?.wholesalePricePerSheet ?? item.wholesale_price_per_sheet ?? 0;
+    
     row.patchValue({
-      itemId:    item.id,
-      itemSearch: item.hindi_name || item.item_name,
-      itemHindiName: item.hindi_name ?? '',
-      wholesale_price_per_sheet: item.wholesale_price_per_sheet ?? 0,
-      production_cost_per_sheet: item.production_cost_per_sheet ?? 0,
+      itemId:                    item.id,
+      itemSearch:                item.hindi_name || item.item_name,
+      itemHindiName:             item.hindi_name ?? '',
+      wholesale_price_per_sheet: wholesalePrice,
+      units_per_sheet:           item.units_per_sheet ?? 10,
+      mrp_per_unit:              mrp,
+      commission_per_sheet:      rule?.commissionPerSheet ?? 0,
     });
   }
 
@@ -154,14 +186,50 @@ export class AdminBulkEntryComponent implements OnInit {
     return typeof item === 'string' ? item : item?.hindi_name || item?.item_name || '';
   }
 
-  // ── Totals ────────────────────────────────────────────────────────────────
+  // ── Row calculation helpers (called from template) ────────────────────────
+  rowSubtotal(i: number): number {
+    return this.calcSubtotal(this.rows.at(i).value);
+  }
+
+  rowProfit(i: number): number {
+    return this.calcProfit(this.rows.at(i).value);
+  }
+
+  private calcSubtotal(v: RowValue): number {
+    const qty  = v.quantity_sold  ?? 0;
+    const disc = v.discount_amount ?? 0;
+    const units = Math.max(1, v.units_per_sheet ?? 1);
+    if (v.sale_type === 'retail') {
+      // Retail rate per packet = wholesale_price / units_per_sheet
+      const ratePerPkt = (v.wholesale_price_per_sheet ?? 0) / units;
+      return Math.max(0, ratePerPkt - disc) * qty;
+    }
+    return Math.max(0, (v.wholesale_price_per_sheet ?? 0) - disc) * qty;
+  }
+
+  private calcProfit(v: RowValue): number {
+    const qty        = v.quantity_sold        ?? 0;
+    const disc       = v.discount_amount      ?? 0;
+    const commission = v.commission_per_sheet ?? 0;
+    const units      = Math.max(1, v.units_per_sheet ?? 1);
+    const wholesale  = v.wholesale_price_per_sheet ?? 0;
+
+    if (v.sale_type === 'retail') {
+      // No delivery boy in retail — owner keeps the commission too
+      // Profit per sheet = 10% of price + commission
+      const sheetsUsed = qty / units;
+      return (wholesale * 0.10 + commission) * sheetsUsed;
+    }
+    // Wholesale: 10% profit margin from wholesale price
+    return (wholesale * 0.10 - disc) * qty;
+  }
+
+  // ── Grand totals ──────────────────────────────────────────────────────────
   private recalcTotals(): void {
     let total = 0, profit = 0;
     for (const row of this.rows.controls) {
-      const { sheets_sold = 0, discount_amount = 0, wholesale_price_per_sheet = 0, production_cost_per_sheet = 0 } = row.value;
-      const finalPerSheet = Math.max(0, (wholesale_price_per_sheet ?? 0) - (discount_amount ?? 0));
-      total  += (sheets_sold ?? 0) * finalPerSheet;
-      profit += (sheets_sold ?? 0) * (finalPerSheet - (production_cost_per_sheet ?? 0));
+      total  += this.calcSubtotal(row.value);
+      profit += this.calcProfit(row.value);
     }
     this.grandTotal.set(total);
     this.totalProfit.set(profit);
@@ -173,16 +241,19 @@ export class AdminBulkEntryComponent implements OnInit {
     const payload = this.rows.controls.map((row) => {
       const v = row.getRawValue();
       return {
-        shopName:      v.shopName,
-        shopMobile:    v.shopMobile || '',
-        item:          v.itemId,
-        itemName:      v.itemSearch,
-        hindiName:     v.itemHindiName,
-        sheets_sold:   v.sheets_sold,
+        shopName:        v.shopName,
+        shopMobile:      v.shopMobile || '',
+        item:            v.itemId,
+        itemName:        v.itemSearch,
+        hindiName:       v.itemHindiName,
+        sale_type:       v.sale_type,
+        unit_type:       v.sale_type === 'retail' ? 'packet' : 'sheet',
+        quantity_sold:   v.quantity_sold,
         discount_amount: v.discount_amount,
       };
     });
     this.loading.show();
+    this.errorMsg.set('');
     this.http.post('/sale/bulk', payload).subscribe({
       next: () => {
         this.submitSuccess.set(true);
@@ -194,7 +265,11 @@ export class AdminBulkEntryComponent implements OnInit {
         this.recalcTotals();
         setTimeout(() => this.submitSuccess.set(false), 4000);
       },
-      error: (err) => { console.error('Bulk entry failed:', err); this.loading.hide(); },
+      error: (err) => {
+        const msg = err?.error?.message || 'Submission failed. Please try again.';
+        this.errorMsg.set(msg);
+        this.loading.hide();
+      },
     });
   }
 
