@@ -57,19 +57,21 @@ AppComponent
 
 Express 5 + TypeScript with Mongoose ODM.
 
+> **Routes mount at the root — there is no `/api` prefix.** Frontend services call these paths directly (proxied in dev via `proxy.conf.json`).
+
 ```
 server.ts (entry point)
 ├── Routes
-│   ├── /api/auth          → auth.route.ts
-│   ├── /api/inventory     → inventory.route.ts
-│   ├── /api/sales         → sale.route.ts
-│   ├── /api/expenses      → expenses.route.ts
-│   ├── /api/assignments   → assignment.route.ts
-│   ├── /api/shops         → shops.route.ts
-│   ├── /api/users         → users.route.ts
-│   ├── /api/reports       → reports.route.ts
-│   ├── /api/admin-reports → admin-reports.route.ts
-│   └── /api/marketing     → marketing.route.ts
+│   ├── /auth            → auth.route.ts
+│   ├── /inventory       → inventory.route.ts
+│   ├── /sale            → sale.route.ts
+│   ├── /assignment      → assignment.route.ts
+│   ├── /expenses        → expenses.route.ts
+│   ├── /shops           → shops.route.ts
+│   ├── /users           → users.route.ts
+│   ├── /reports         → reports.route.ts
+│   ├── /admin/reports   → admin-reports.route.ts
+│   └── /admin/marketing → marketing.route.ts
 ├── Models (Mongoose schemas)
 │   ├── user.model.ts
 │   ├── inventory.model.ts
@@ -92,13 +94,14 @@ server.ts (entry point)
 ## Auth Flow
 
 ```
-User → Login Page → POST /api/auth/login (email + password)
+User → Login Page → POST /auth/login (email + password)
   → Backend validates credentials, returns JWT token
   → Frontend stores token in localStorage
   → AuthService sets user state
-  → authGuard checks token on route navigation
-  → HTTP interceptor adds Authorization: Bearer <token> header
+  → authGuard (core/guards/auth.guard.ts) checks token on route navigation
+  → authInterceptor (core/auth.interceptor.ts) adds Authorization: Bearer <token> header
   → 401 response → redirect to /login
+  → Any user with isActive: false is blocked at login (HTTP 403)
 ```
 
 ## Data Flow

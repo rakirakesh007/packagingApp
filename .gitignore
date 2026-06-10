@@ -22,6 +22,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code (machine-local settings)
+.claude/settings.local.json
+
 # Angular
 frontend/.angular/
 frontend/.output/

@@ -53,13 +53,18 @@ npx ts-node src/seed-users.ts
 
 ## Proxy Configuration
 
-The frontend proxies API calls via `proxy.conf.json`:
+The frontend proxies API calls via `frontend/proxy.conf.json`. Each backend resource is proxied by its **root path** (there is no `/api` prefix). When you add a new backend route, add its top-level path here too:
 ```json
 {
-  "/api/*": {
-    "target": "http://localhost:3000",
-    "secure": false
-  }
+  "/auth":       { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/inventory":  { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/sale":       { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/assignment": { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/admin":      { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/expenses":   { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/reports":    { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/users":      { "target": "http://localhost:3000", "secure": false, "changeOrigin": true },
+  "/shops":      { "target": "http://localhost:3000", "secure": false, "changeOrigin": true }
 }
 ```
 

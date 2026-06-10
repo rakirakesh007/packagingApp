@@ -7,18 +7,23 @@
 ---
 
 ## 1. Business Core Logic (The "Golden Rules")
-- **Atomic Inventory:** All sales must use MongoDB `$inc: { total_stock: -qty }`. Never overwrite stock based on frontend calculations during a sale.
-- **Profit Calculation:** $$Net Profit = (Sale Price - Purchase Price) - Expenses$$
+- **Atomic Inventory:** All sales must use MongoDB `$inc` inside a transaction, decrementing **both** `total_stock` and `reserved_stock`. Never overwrite stock based on frontend calculations during a sale. Guard: `total_stock − reserved_stock ≥ sheets_sold`.
+- **Server-side Money:** Client sends only `sheets_sold` + `discount_amount`. Backend computes `final_price`, `profit`, `total_amount`, `total_discount`, `total_profit`.
+- **Pricing:** `final_price = max(0, wholesale_price_per_sheet − discount_amount) × sheets_sold`; `profit = final_price × 0.10` (10% margin on selling price).
+- **Stock Model:** `available_stock = total_stock − reserved_stock`. Assignment reserves stock; sale consumes both the warehouse count and the reservation.
 - **Stock Reconciliation:** $$Closing Stock = Opening (Assigned) - Sold (Invoices)$$
-- **Cold Start Handling:** Every primary action (Login, Sync, Report) must trigger the `GlobalLoadingSignal` to accommodate Render's Free Tier delay.
+- **Cold Start Handling:** Every primary action (Login, Sync, Report) must trigger the `GlobalLoadingService` to accommodate Render's Free Tier delay.
 
 ---
 
 ## 2. Database Schemas (MongoDB Atlas)
+> Current sheet-based model. Stock is counted in **sheets**; a sheet holds `units_per_sheet` individual packets.
+
 ### Inventory
-- `item_name`, `hindi_name`, `description`, `quantity` (gm), `mrp`, `total_stock`, `unit_price` (Sale), `purchase_price` (Cost), `low_stock_threshold`, `image_url`.
+- `item_name`, `hindi_name`, `description`, `units_per_sheet` (packets/sheet), `quantity_per_unit` (gm/packet, printed on label), `mrp_per_unit`, `total_stock` (sheets), `reserved_stock` (sheets loaded but unsold), `wholesale_price_per_sheet`, `low_stock_threshold`, `image_url`.
 ### Sales & Invoicing
-- `items: [{item_id, qty, price}]`, `total_amount`, `shop_name`, `shop_id` (ref: Shop), `delivery_boy_id`, `payment_mode` (Enum: `cash`, `online`).
+- `delivery_boy_id`, `shop_id` (ref: Shop), `shop_name`, `customer_name`, `payment_mode` (Enum: `cash`, `online`, `pending`), `total_amount`, `total_discount`, `total_profit`, `timestamp`.
+- `items: [{ item_id, sale_type (wholesale|retail), sheets_sold, packets_sold, wholesale_price_per_sheet, discount_amount, final_price, profit, item_name, hindi_name, description }]` — all money fields snapshotted/computed server-side.
 ### Shops (Marketing)
 - `name`, `mobile` (unique), `address`, `total_orders_count`.
 ### Expenses
@@ -82,7 +87,8 @@
 ---
 
 ## 4. Technical Constraints (2026 Standards)
-- **Frontend:** Angular 18+, Standalone Components, Signals for State, `inject()`, Tailwind CSS.
+- **Frontend:** Angular 21, Standalone Components, Signals for State, `inject()`, Ionic 8 + Angular Material + Tailwind CSS, `lucide-angular` icons, `jspdf`/`html2canvas` for client-side PDFs.
+- **Backend:** Express 5 + TypeScript, Mongoose 8, JWT + bcryptjs. Routes mount at root (no `/api` prefix).
 - **Performance:** `ChangeDetectionStrategy.OnPush` on all feature components.
 - **Structure:** 4-file component structure (TS, HTML, SCSS, Spec) for features > 50 lines.
 
