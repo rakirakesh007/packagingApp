@@ -36,14 +36,10 @@
               {{ item.item_name || '' }}
             </div>
 
-            <!-- Net Weight & MRP -->
+            <!-- MRP & PKD -->
+            <!-- Net Wt: {{ item.quantity_per_unit ? item.quantity_per_unit + 'g' : '--' }} | Batch: {{ batchNumber() }} (hidden) -->
             <div class="specs-line">
-              <span>Net Wt: {{ item.quantity_per_unit ? item.quantity_per_unit + 'g' : '--' }} | MRP: ₹{{ item.mrp_per_unit || '--' }}</span>
-            </div>
-
-            <!-- PKD Date & Batch -->
-            <div class="specs-line">
-              <span>PKD: {{ pkdMonthYear() }} | Batch: {{ batchNumber() }}</span>
+              <span>MRP: ₹{{ item.mrp_per_unit || '--' }} | PKD: {{ pkdMonthYear() }}</span>
             </div>
 
             <!-- FSSAI & License (inline, vertically centered) -->
@@ -51,14 +47,23 @@
               <img src="assets/fssai-logo.png" alt="FSSAI Logo" class="fssai-logo" />
               <span class="fssai-text">Lic No. : {{ labelSheetConfig.fssaiNo }}</span>
             </div>
+
+            <!-- Quality statement (below FSSAI) -->
+            <div class="quality-line">
+              <div class="quality-p1">कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध</div>
+              <!-- <div class="quality-p2">१००% प्राकृतिक और शुद्ध</div>साफ़ पैकिंग -->
+            </div>
           } @else {
             <!-- Placeholder content -->
             <div class="item-name-hindi" style="color: #ccc;">Sample Product</div>
             <div class="item-name-english" style="color: #ddd;">Product Name</div>
-            <div class="specs-line" style="color: #ddd;">Net Wt: -- MRP: --</div>
-            <div class="specs-line" style="color: #ddd;">PKD: -- | Batch: --</div>
+            <div class="specs-line" style="color: #ddd;">MRP: -- | PKD: --</div>
             <div class="fssai-section" style="color: #ddd;">
               <span>FSSAI Placeholder</span>
+            </div>
+            <div class="quality-line" style="color: #ddd;">
+              <div class="quality-p1">कोई मिलावटी रंग नहीं | साफ़ पैकिंग</div>
+              <div class="quality-p2">१००% प्राकृतिक और शुद्ध</div>
             </div>
           }
         </div>

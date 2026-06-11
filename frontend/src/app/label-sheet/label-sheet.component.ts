@@ -103,7 +103,7 @@ export class LabelSheetComponent implements OnInit {
       console.warn('Failed to load logo image');
       this.logoDataUrl.set(null);
     };
-    logoImg.src = 'assets/new-logo.png';
+    logoImg.src = 'assets/color-logo.png';
 
     const vegImg = new Image();
     vegImg.onload = () => {
