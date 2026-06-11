@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
 //   gap: 3px;
-  padding: 8px;
+  padding: 3mm;
   background: white;
   width: 100%;
   min-height: 100vh;
@@ -24,8 +24,6 @@
   background: white;
   box-sizing: border-box;
   page-break-inside: avoid;
-  padding: 3mm; /* non-printable margin safe zone */
-    // padding: 4px 0;
 //   @media print {
 //     page-break-inside: avoid;
 //     min-height: 130px;
