@@ -80,7 +80,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
           qty: nextQty,
           item_name: inv?.item_name ?? item.item_name ?? '',
           hindi_name: inv?.hindi_name ?? item.hindi_name ?? '',
-          wholesale_price_per_sheet: inv?.wholesale_price_per_sheet ?? item.wholesale_price_per_sheet ?? 0,
+          wholesale_price_per_sheet: item.wholesale_price_per_sheet || inv?.wholesale_price_per_sheet || 0,
         });
         return acc;
       },
