@@ -95,21 +95,22 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 1px 5px;
+  padding: 2px 8px 2px 5px; /* extra right padding — protects against cut-edge clipping */
   box-sizing: border-box;
   overflow: hidden;
+  line-height: 1.2; /* unified line spacing for all children */
 }
 
 .item-name-hindi {
   font-size: 15px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   width: 100%;
   overflow: visible;
   white-space: normal;
   word-break: break-word;
   text-align: left;
-  margin-bottom: 0;
+  margin: 0 0 1px;
   color: #1f2937;
 }
 
@@ -135,26 +136,32 @@
   color: #374151;
 }
 
-/* ── Quality Statement ──────────────────────────────────────────────────────── */
+/* ── Ingredients / Quality Statement ───────────────────────────────────────── */
 .quality-line {
   display: flex;
   flex-direction: column;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: #374151;
   letter-spacing: 0.3px;
   margin: 1px 0 0;
   width: 100%;
-  line-height: 1.15;
 }
 
 .quality-p1 {
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   overflow: hidden;
 }
 
+.quality-label {
+  font-weight: 800;
+  color: #1f2937;
+}
+
 .quality-p2 {
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   overflow: hidden;
 }
 
@@ -166,7 +173,6 @@
   gap: 3px;
   margin: 1px 0 0;
   width: 100%;
-  line-height: 10px;
 }
 
 .fssai-logo {
@@ -180,7 +186,6 @@
   font-size: 10px;
   color: #4b5563;
   margin: 0;
-  line-height: 1;
   display: inline;
   white-space: nowrap;
 }

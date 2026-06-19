@@ -50,7 +50,11 @@
 
             <!-- Ingredients / quality statement -->
             <div class="quality-line">
-              <div class="quality-p1">{{ item.ingredients || 'कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध' }}</div>
+              @if (item.ingredients) {
+                <div class="quality-p1"><span class="quality-label">Ingr:</span> {{ item.ingredients }}</div>
+              } @else {
+                <div class="quality-p1">कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध</div>
+              }
             </div>
           } @else {
             <!-- Placeholder content -->
