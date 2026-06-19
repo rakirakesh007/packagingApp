@@ -48,14 +48,12 @@
               <span class="fssai-text">Lic No. : {{ labelSheetConfig.fssaiNo }}</span>
             </div>
 
-            <!-- Ingredients / quality statement -->
-            <div class="quality-line">
-              @if (item.ingredients) {
+            <!-- Ingredients (only shown when set) -->
+            @if (item.ingredients) {
+              <div class="quality-line">
                 <div class="quality-p1"><span class="quality-label">Ingr:</span> {{ item.ingredients }}</div>
-              } @else {
-                <div class="quality-p1">कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध</div>
-              }
-            </div>
+              </div>
+            }
           } @else {
             <!-- Placeholder content -->
             <div class="item-name-hindi" style="color: #ccc;">Sample Product</div>
@@ -63,10 +61,6 @@
             <div class="specs-line" style="color: #ddd;">MRP: -- | PKD: --</div>
             <div class="fssai-section" style="color: #ddd;">
               <span>FSSAI Placeholder</span>
-            </div>
-            <div class="quality-line" style="color: #ddd;">
-              <div class="quality-p1">कोई मिलावटी रंग नहीं | साफ़ पैकिंग</div>
-              <div class="quality-p2">१००% प्राकृतिक और शुद्ध</div>
             </div>
           }
         </div>
