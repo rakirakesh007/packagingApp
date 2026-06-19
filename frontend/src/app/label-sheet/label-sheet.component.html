@@ -48,10 +48,9 @@
               <span class="fssai-text">Lic No. : {{ labelSheetConfig.fssaiNo }}</span>
             </div>
 
-            <!-- Quality statement (below FSSAI) -->
+            <!-- Ingredients / quality statement -->
             <div class="quality-line">
-              <div class="quality-p1">कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध</div>
-              <!-- <div class="quality-p2">१००% प्राकृतिक और शुद्ध</div>साफ़ पैकिंग -->
+              <div class="quality-p1">{{ item.ingredients || 'कोई मिलावटी रंग नहीं | १००% प्राकृतिक और शुद्ध' }}</div>
             </div>
           } @else {
             <!-- Placeholder content -->
