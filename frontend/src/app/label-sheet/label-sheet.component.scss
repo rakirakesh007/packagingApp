@@ -20,7 +20,7 @@
 .label-card {
   display: flex;
   flex-direction: row;
-  border: 1px solid;
+  border: 0.5px solid #cbd5e1;
   background: white;
   box-sizing: border-box;
   page-break-inside: avoid;
@@ -32,21 +32,21 @@
 
 /* ── Left: Logo Column ────────────────────────────────────────────────────── */
 .logo-column {
-  width: 120px;
-  min-width: 120px;
+  width: 105px;
+  min-width: 105px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 4px;
-  border-right: 1px solid #d1d5db;
+  border-right: 0.5px solid #d1d5db;
   box-sizing: border-box;
-  background: #fafafa;
+  background: white;
 }
 
 .brand-logo {
-  width: 90px;
-  height: 90px;
+  width: 78px;
+  height: 78px;
   object-fit: contain;
   display: block;
 }
@@ -95,7 +95,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 2px 8px 2px 5px; /* extra right padding — protects against cut-edge clipping */
+  padding: 2px 8px 2px 5px; /* extra right padding prevents cut-edge clipping */
   box-sizing: border-box;
   overflow: hidden;
   line-height: 1.2; /* unified line spacing for all children */

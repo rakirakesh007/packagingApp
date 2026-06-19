@@ -19,7 +19,7 @@
             @if (vegDataUrl()) {
               <img [src]="vegDataUrl()" alt="Veg" class="veg-icon" />
             }
-            <span class="veg-text">100 % Veg</span>
+            <span class="veg-text">100% Veg</span>
           </div>
         </div>
 
@@ -39,7 +39,11 @@
             <!-- MRP & PKD -->
             <!-- Net Wt: {{ item.quantity_per_unit ? item.quantity_per_unit + 'g' : '--' }} | Batch: {{ batchNumber() }} (hidden) -->
             <div class="specs-line">
-              <span>MRP: ₹{{ item.mrp_per_unit || '--' }} | PKD: {{ pkdMonthYear() }}</span>
+              @if (item.quantity_per_unit) {
+                <span>Net Wt: {{ item.quantity_per_unit }}g | MRP: ₹{{ item.mrp_per_unit || '--' }} | PKD: {{ pkdMonthYear() }}</span>
+              } @else {
+                <span>MRP: ₹{{ item.mrp_per_unit || '--' }} | PKD: {{ pkdMonthYear() }}</span>
+              }
             </div>
 
             <!-- FSSAI & License (inline, vertically centered) -->
