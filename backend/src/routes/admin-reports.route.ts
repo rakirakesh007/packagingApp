@@ -16,6 +16,13 @@ function resolveMonthRange(month?: string, year?: string): { start: Date; end: D
   return { start, end, monthNumber, yearNumber };
 }
 
+/** Map item_id → units_per_sheet (frontend needs it to render "X sheets Y pcs"). */
+async function buildUnitsPerSheetMap(itemIds: string[]): Promise<Map<string, number>> {
+  if (itemIds.length === 0) return new Map();
+  const docs = await InventoryModel.find({ _id: { $in: itemIds } }, { units_per_sheet: 1 }).lean();
+  return new Map(docs.map(d => [String(d._id), d.units_per_sheet ?? 1]));
+}
+
 /**
  * GET /admin/reports/today — live KPIs for the dashboard.
  */
@@ -46,7 +53,14 @@ router.get('/today', async (_req: Request, res: Response) => {
         itemMap.set(key, cur);
       });
     });
-    const topItems = [...itemMap.values()].sort((a, b) => b.sheets_sold - a.sheets_sold).slice(0, 5);
+
+    // units_per_sheet is needed by the frontend to render "X sheets Y pcs".
+    // Sale items don't store it — look it up from inventory.
+    const unitsMap = await buildUnitsPerSheetMap([...itemMap.keys()]);
+    const topItems = [...itemMap.values()]
+      .map(item => ({ ...item, units_per_sheet: unitsMap.get(item.item_id) ?? 1 }))
+      .sort((a, b) => b.sheets_sold - a.sheets_sold)
+      .slice(0, 5);
 
     return res.json({ totalRevenue, totalSales, totalProfit, cashCollected, activeBoys, topItems });
   } catch (error) {
@@ -80,15 +94,29 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
     });
 
     const soldMap = new Map<string, number>();
+    const soldNames = new Map<string, { item_name: string; hindi_name: string }>();
     sales.forEach(sale => {
       sale.items.forEach(item => {
         const key = String(item.item_id);
         soldMap.set(key, (soldMap.get(key) ?? 0) + ((item as any).sheets_sold ?? 0));
+        if (!soldNames.has(key)) {
+          soldNames.set(key, { item_name: (item as any).item_name || '', hindi_name: (item as any).hindi_name || '' });
+        }
       });
     });
 
+    // Include sold-only items (retail sales of stock not in today's loadings).
+    soldMap.forEach((_v, key) => {
+      if (!openingMap.has(key)) {
+        const names = soldNames.get(key) ?? { item_name: '', hindi_name: '' };
+        openingMap.set(key, { item_id: key, item_name: names.item_name, hindi_name: names.hindi_name, opening: 0 });
+      }
+    });
+
+    const unitsMap = await buildUnitsPerSheetMap([...openingMap.keys()]);
     const result = [...openingMap.values()].map(item => ({
       ...item,
+      units_per_sheet: unitsMap.get(item.item_id) ?? 1,
       sold:      soldMap.get(item.item_id) ?? 0,
       remaining: item.opening - (soldMap.get(item.item_id) ?? 0),
     })).sort((a, b) => b.sold - a.sold);
@@ -124,10 +152,12 @@ router.get('/eod', async (_req: Request, res: Response) => {
           timestamp: { $gte: start, $lte: end },
         });
 
-        const sold = sales.reduce(
+        // Cross-item sheet total; delivery-boy sales are wholesale (whole) in
+        // practice — round to kill float dust.
+        const sold = Math.round(sales.reduce(
           (sum, s) => sum + s.items.reduce((si, i) => si + ((i as any).sheets_sold ?? 0), 0),
           0
-        );
+        ));
         const cashCollected = sales.reduce((sum, s) => sum + s.total_amount, 0);
         const user = userMap.get(String(loading.delivery_boy_id));
 
@@ -233,6 +263,9 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
       existing.netCash = existing.totalCashCollected;
       grouped.set(deliveryBoyId, existing);
     });
+
+    // Round cross-item sheet totals (wholesale/whole in practice) to kill float dust.
+    grouped.forEach((g) => { g.totalSheets = Math.round(g.totalSheets); });
 
     const staff = [...grouped.values()].sort((a, b) => a.boyName.localeCompare(b.boyName));
 

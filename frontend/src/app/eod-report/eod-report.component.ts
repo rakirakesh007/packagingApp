@@ -9,11 +9,14 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { AuthService } from '../auth/auth.service';
+import { SheetQtyPipe } from '../core/sheet-qty.pipe';
+import { formatSheetQty } from '../core/quantity.util';
 
 interface EodItem {
   item_id: string;
   item_name: string;
   hindi_name?: string;
+  units_per_sheet: number;
   opening: number;
   sold: number;
   remaining: number;
@@ -27,7 +30,7 @@ interface EodReport {
 @Component({
   selector: 'app-eod-report',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SheetQtyPipe],
   templateUrl: './eod-report.component.html',
   styleUrls: ['./eod-report.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,7 +63,7 @@ export class EodReportComponent implements OnInit {
     const lines = report.closingStock
       .map(
         (item) =>
-          `${item.item_name}: Opening ${item.opening} | Sold ${item.sold} | Remaining ${item.remaining}`
+          `${item.item_name}: Opening ${formatSheetQty(item.opening, item.units_per_sheet)} | Sold ${formatSheetQty(item.sold, item.units_per_sheet)} | Remaining ${formatSheetQty(item.remaining, item.units_per_sheet)}`
       )
       .join('\n');
     const message = `EOD Report:\n\n${lines}\n\nTotal Cash to Deposit: \u20B9${report.totalCash}`;

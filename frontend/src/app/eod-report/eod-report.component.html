@@ -19,11 +19,11 @@
               <span class="block text-xs text-gray-400">({{ item.item_name }})</span>
             }
           </td>
-          <td class="border border-gray-300 px-4 py-2 text-right">{{ item.opening }}</td>
-          <td class="border border-gray-300 px-4 py-2 text-right">{{ item.sold }}</td>
+          <td class="border border-gray-300 px-4 py-2 text-right">{{ item.opening | sheetQty:item.units_per_sheet }}</td>
+          <td class="border border-gray-300 px-4 py-2 text-right">{{ item.sold | sheetQty:item.units_per_sheet }}</td>
           <td class="border border-gray-300 px-4 py-2 text-right font-bold"
               [class.text-red-600]="item.remaining < 0">
-            {{ item.remaining }}
+            {{ item.remaining | sheetQty:item.units_per_sheet }}
             @if (item.remaining < 0) {
               <span class="ml-1 text-xs text-red-500" title="Data entry error">&#x26A0;</span>
             }

@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { forkJoin, of } from 'rxjs';
@@ -19,7 +20,7 @@ interface TodayStats {
   totalProfit: number;
   cashCollected: number;
   activeBoys: number;
-  topItems: { item_id: string; item_name: string; hindi_name: string; sheets_sold: number; revenue: number }[];
+  topItems: { item_id: string; item_name: string; hindi_name: string; sheets_sold: number; units_per_sheet: number; revenue: number }[];
 }
 
 interface EodBoy {
@@ -43,7 +44,7 @@ interface LowStockItem {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, SheetQtyPipe],
   templateUrl: './admin-dashboard.page.html',
   styleUrls: ['./admin-dashboard.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

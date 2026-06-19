@@ -57,7 +57,7 @@
           <div class="bar-wrap">
             <div class="bar-fill" [style.width.%]="barWidth(item.sheets_sold)"></div>
           </div>
-          <span class="product-qty">{{ item.sheets_sold }} sheets</span>
+          <span class="product-qty">{{ item.sheets_sold | sheetQty:item.units_per_sheet }}</span>
         </div>
       } @empty {
         <p class="empty-msg">No sales yet today.</p>

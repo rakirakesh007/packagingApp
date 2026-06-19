@@ -15,4 +15,5 @@ export interface InventoryItem {
   wholesale_price_per_sheet: number;
   low_stock_threshold: number;
   image_url?: string;
+  ingredients?: string;
 }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { SaleModel } from '../models/sale.model';
 import { LoadingModel } from '../models/loading.model';
+import { InventoryModel } from '../models/inventory.model';
 import { requireSelfOrAdmin } from '../middleware/auth.middleware';
 const router = Router();
 
@@ -50,16 +51,24 @@ router.get('/eod/:delivery_boy_id', requireSelfOrAdmin('delivery_boy_id'), async
       });
     });
 
+    // units_per_sheet per item — frontend renders "X sheets Y pcs".
+    const itemIds = openingStock.map((i) => i.item_id);
+    const invDocs = itemIds.length
+      ? await InventoryModel.find({ _id: { $in: itemIds } }, { units_per_sheet: 1 }).lean()
+      : [];
+    const unitsMap = new Map(invDocs.map((d) => [String(d._id), d.units_per_sheet ?? 1]));
+
     // Calculate Closing Stock
     const closingStock = openingStock.map((item) => {
       const key = item.item_id.toString();
       return {
-        item_id:    item.item_id,
-        item_name:  (item as any).item_name  || '',
-        hindi_name: (item as any).hindi_name || '',
-        opening:    item.qty,
-        sold:       soldItems[key] || 0,
-        remaining:  item.qty - (soldItems[key] || 0),
+        item_id:         item.item_id,
+        item_name:       (item as any).item_name  || '',
+        hindi_name:      (item as any).hindi_name || '',
+        units_per_sheet: unitsMap.get(key) ?? 1,
+        opening:         item.qty,
+        sold:            soldItems[key] || 0,
+        remaining:       item.qty - (soldItems[key] || 0),
       };
     });
 

@@ -85,8 +85,8 @@
             <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
               <tr>
                 <th class="px-4 py-3 text-left">Product</th>
-                <th class="px-4 py-3 text-right">Opening (sheets)</th>
-                <th class="px-4 py-3 text-right">Sold (sheets)</th>
+                <th class="px-4 py-3 text-right">Opening</th>
+                <th class="px-4 py-3 text-right">Sold</th>
                 <th class="px-4 py-3 text-right">Remaining</th>
               </tr>
             </thead>
@@ -99,9 +99,9 @@
                       <span class="text-xs text-gray-400 ml-1">({{ row.item_name }})</span>
                     }
                   </td>
-                  <td class="px-4 py-3 text-right">{{ row.opening }}</td>
-                  <td class="px-4 py-3 text-right font-semibold">{{ row.sold }}</td>
-                  <td class="px-4 py-3 text-right" [class.text-red-600]="row.remaining < 0">{{ row.remaining }}</td>
+                  <td class="px-4 py-3 text-right">{{ row.opening | sheetQty:row.units_per_sheet }}</td>
+                  <td class="px-4 py-3 text-right font-semibold">{{ row.sold | sheetQty:row.units_per_sheet }}</td>
+                  <td class="px-4 py-3 text-right" [class.text-red-600]="row.remaining < 0">{{ row.remaining | sheetQty:row.units_per_sheet }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No sales data today.</td></tr>

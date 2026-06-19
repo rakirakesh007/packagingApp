@@ -14,11 +14,12 @@ import { GlobalLoadingService } from '../services/global-loading.service';
 import { AuthService } from '../auth/auth.service';
 import { ToastService } from '../services/toast.service';
 import { InventoryItem } from '../models/inventory.model';
+import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SheetQtyPipe],
   templateUrl: './inventory.page.html',
   styleUrls: ['./inventory.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,6 +77,7 @@ export class InventoryPage implements OnInit {
   formWholesalePricePerSheet = 0;
   formStock = 0;
   formThreshold = 5;
+  formIngredients = '';
 
   ngOnInit(): void {
     this.fetchItems();
@@ -107,8 +109,9 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
     this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
     this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
-    this.formStock     = item.total_stock;
-    this.formThreshold = item.low_stock_threshold;
+    this.formStock       = item.total_stock;
+    this.formThreshold   = item.low_stock_threshold;
+    this.formIngredients = item.ingredients ?? '';
     this.showItemModal.set(true);
   }
 
@@ -137,6 +140,7 @@ export class InventoryPage implements OnInit {
       wholesale_price_per_sheet:  Number(this.formWholesalePricePerSheet) || 0,
       total_stock:                Number(this.formStock) || 0,
       low_stock_threshold:        Number(this.formThreshold) || 0,
+      ingredients:                this.formIngredients.trim(),
     };
 
     this.loading.show();
@@ -215,8 +219,9 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit        = 0;
     this.formMrpPerUnit             = 0;
     this.formWholesalePricePerSheet = 0;
-    this.formStock     = 0;
-    this.formThreshold = 5;
+    this.formStock       = 0;
+    this.formThreshold   = 5;
+    this.formIngredients = '';
   }
 
   addItem(): void {

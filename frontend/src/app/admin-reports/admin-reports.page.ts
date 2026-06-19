@@ -12,6 +12,7 @@ import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { saveAs } from 'file-saver';
 import { forkJoin } from 'rxjs';
+import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 
 interface EodByBoy {
   delivery_boy_id: string;
@@ -26,6 +27,7 @@ interface EodByProduct {
   item_id: string;
   item_name: string;
   hindi_name: string;
+  units_per_sheet: number;
   opening: number;
   sold: number;
   remaining: number;
@@ -53,7 +55,7 @@ interface StaffRow {
 @Component({
   selector: 'app-admin-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SheetQtyPipe],
   templateUrl: './admin-reports.page.html',
   styleUrls: ['./admin-reports.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -68,6 +68,12 @@ const inventorySchema = new Schema(
       trim: true,
       default: null,
     },
+    // ingredients: comma-separated list printed on label (e.g. "Coriander, Salt, Chilli")
+    ingredients: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     versionKey: false,
