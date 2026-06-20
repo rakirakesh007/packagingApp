@@ -129,11 +129,15 @@
 .specs-line {
   font-size: 10px;
   font-weight: 700;
-  margin: 0 0 1px;
+  margin: 0;
   white-space: nowrap;
   text-align: left;
   width: 100%;
   color: #374151;
+
+  &.specs-line--pkd {
+    margin-bottom: 1px;
+  }
 }
 
 /* ── Ingredients / Quality Statement ───────────────────────────────────────── */
@@ -171,7 +175,7 @@
   flex-direction: row;
   align-items: center;
   gap: 3px;
-  margin: 1px 0 0;
+  margin: 0;
   width: 100%;
 }
 
