@@ -45,7 +45,7 @@ export class LabelSheetComponent implements OnInit {
     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const date = new Date();
     const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
+    const year = String(date.getFullYear()).slice(-2);
     return `${month}-${year}`;
   });
 

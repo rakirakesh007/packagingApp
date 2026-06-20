@@ -36,17 +36,13 @@
               {{ item.item_name || '' }}
             </div>
 
-            <!-- Line 1: Net Wt + MRP -->
+            <!-- Wt / MRP / PKD — compact single line -->
             <div class="specs-line">
               @if (item.quantity_per_unit) {
-                Net Wt: {{ item.quantity_per_unit }}g &nbsp; MRP: ₹{{ item.mrp_per_unit || '--' }}
+                Wt:{{ item.quantity_per_unit }}g | MRP:₹{{ item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
               } @else {
-                MRP: ₹{{ item.mrp_per_unit || '--' }}
+                MRP:₹{{ item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
               }
-            </div>
-            <!-- Line 2: PKD + Best Before -->
-            <div class="specs-line specs-line--pkd">
-              PKD: {{ pkdMonthYear() }} &nbsp; BB: 6 Months
             </div>
 
             <!-- FSSAI & License (inline, vertically centered) -->
