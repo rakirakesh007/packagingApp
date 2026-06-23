@@ -6,6 +6,12 @@
   width: 100%;
   margin: 0;
   box-sizing: border-box;
+
+  @media print {
+    height: 100vh;           // fill exactly one page
+    grid-auto-rows: 1fr;     // rows share page height equally — no blank space
+    padding: 2mm;
+  }
 }
 
 .label-card {

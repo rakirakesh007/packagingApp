@@ -65,21 +65,22 @@ export class LabelSheetComponent implements OnInit {
     this.route.queryParams.subscribe((params) => {
       const itemIds = params['itemIds'] ? params['itemIds'].split(',') : [];
       const total = params['total'] ? parseInt(params['total'], 10) : 35;
+      // Round up to nearest multiple of 5 — no partial rows
+      const paddedTotal = Math.ceil(Math.max(total, 5) / 5) * 5;
 
       if (itemIds.length > 0) {
         this.inventoryService.getItemsByIds(itemIds).subscribe({
           next: (fetched) => {
             this.items.set(fetched);
-            this.totalLabels.set(total);
+            this.totalLabels.set(paddedTotal);
           },
           error: (err) => {
             console.error('Failed to fetch items:', err);
-            // Show placeholder if fetch fails
-            this.totalLabels.set(total);
+            this.totalLabels.set(paddedTotal);
           },
         });
       } else {
-        this.totalLabels.set(total);
+        this.totalLabels.set(paddedTotal);
       }
 
       // Load logo and veg images
