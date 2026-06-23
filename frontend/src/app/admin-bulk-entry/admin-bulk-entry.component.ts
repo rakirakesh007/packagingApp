@@ -23,7 +23,6 @@ import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { InventoryService } from '../services/inventory.service';
 import { InventoryItem } from '../models/inventory.model';
-import { getPricingRule } from '../core/pricing.config';
 
 export type SaleType = 'wholesale' | 'retail';
 
@@ -37,25 +36,23 @@ interface SaleRowControls {
   sale_type:                 FormControl<SaleType>;
   /** Sheets (wholesale) or packets (retail) — as entered by admin */
   quantity_sold:             FormControl<number>;
-  discount_amount:           FormControl<number>;
+  /** Editable negotiated price: per sheet (wholesale) or per packet (retail) */
+  selling_price:             FormControl<number>;
   wholesale_price_per_sheet: FormControl<number>;
   /** Individual packets packed per sheet for this item */
   units_per_sheet:           FormControl<number>;
-  /** MRP printed on individual packet — used as rate for retail sales */
+  /** MRP printed on individual packet — default retail price */
   mrp_per_unit:              FormControl<number>;
-  /** Delivery-boy commission per sheet (wholesale). For retail = my profit per sheet */
-  commission_per_sheet:      FormControl<number>;
 }
 
 /** Partial mirror of SaleRowControls values for calculation helpers */
 type RowValue = Partial<{
   sale_type:                 SaleType;
   quantity_sold:             number;
-  discount_amount:           number;
+  selling_price:             number;
   wholesale_price_per_sheet: number;
   units_per_sheet:           number;
   mrp_per_unit:              number;
-  commission_per_sheet:      number;
 }>;
 
 @Component({
@@ -119,11 +116,10 @@ export class AdminBulkEntryComponent implements OnInit {
       itemHindiName:             this.fb.control(''),
       sale_type:                 this.fb.control<SaleType>('wholesale'),
       quantity_sold:             this.fb.control(0, [Validators.required, Validators.min(1)]),
-      discount_amount:           this.fb.control(0, [Validators.min(0)]),
+      selling_price:             this.fb.control(0, [Validators.min(0)]),
       wholesale_price_per_sheet: this.fb.control(0),
       units_per_sheet:           this.fb.control(10),
       mrp_per_unit:              this.fb.control(0),
-      commission_per_sheet:      this.fb.control(0),
     });
   }
 
@@ -143,9 +139,18 @@ export class AdminBulkEntryComponent implements OnInit {
     }
   }
 
-  /** Switch sale type and reset discount to 0 to avoid stale per-unit values */
+  /**
+   * Switch sale type and reset selling price to that type's default.
+   * wholesale_price_per_sheet holds the per-packet wholesale, so a sheet's price = it × units_per_sheet.
+   * wholesale → wholesale_price_per_sheet × units_per_sheet | retail → mrp_per_unit
+   */
   setType(rowIndex: number, type: SaleType): void {
-    this.rows.at(rowIndex).patchValue({ sale_type: type, discount_amount: 0 });
+    const row = this.rows.at(rowIndex);
+    const v = row.getRawValue();
+    const defaultPrice = type === 'retail'
+      ? (v.mrp_per_unit ?? 0)
+      : (v.wholesale_price_per_sheet ?? 0) * (v.units_per_sheet ?? 1);
+    row.patchValue({ sale_type: type, selling_price: defaultPrice });
     this.recalcTotals();
   }
 
@@ -166,19 +171,19 @@ export class AdminBulkEntryComponent implements OnInit {
   selectItem(item: InventoryItem, rowIndex: number): void {
     const row = this.rows.at(rowIndex);
     const mrp = item.mrp_per_unit ?? 0;
-    const rule = getPricingRule(mrp);
-    
-    // Use pricing rule's wholesale price (source of truth); fall back to inventory if no rule
-    const wholesalePrice = rule?.wholesalePricePerSheet ?? item.wholesale_price_per_sheet ?? 0;
-    
+    const wholesalePerPkt = item.wholesale_price_per_sheet ?? 0; // field holds per-packet wholesale
+    const units = item.units_per_sheet ?? 10;
+    const isRetail = row.getRawValue().sale_type === 'retail';
+
     row.patchValue({
       itemId:                    item.id,
       itemSearch:                item.hindi_name || item.item_name,
       itemHindiName:             item.hindi_name ?? '',
-      wholesale_price_per_sheet: wholesalePrice,
-      units_per_sheet:           item.units_per_sheet ?? 10,
+      wholesale_price_per_sheet: wholesalePerPkt,
+      units_per_sheet:           units,
       mrp_per_unit:              mrp,
-      commission_per_sheet:      rule?.commissionPerSheet ?? 0,
+      // Default selling price = wholesale × units (sheet) or MRP (packet); admin can override.
+      selling_price:             isRetail ? mrp : wholesalePerPkt * units,
     });
   }
 
@@ -196,32 +201,23 @@ export class AdminBulkEntryComponent implements OnInit {
   }
 
   private calcSubtotal(v: RowValue): number {
-    const qty  = v.quantity_sold  ?? 0;
-    const disc = v.discount_amount ?? 0;
-    const units = Math.max(1, v.units_per_sheet ?? 1);
-    if (v.sale_type === 'retail') {
-      // Retail rate per packet = wholesale_price / units_per_sheet
-      const ratePerPkt = (v.wholesale_price_per_sheet ?? 0) / units;
-      return Math.max(0, ratePerPkt - disc) * qty;
-    }
-    return Math.max(0, (v.wholesale_price_per_sheet ?? 0) - disc) * qty;
+    const qty   = v.quantity_sold ?? 0;
+    const price = Math.max(0, v.selling_price ?? 0);
+    // Price is per sheet (wholesale) or per packet (retail); qty matches.
+    return price * qty;
   }
 
   private calcProfit(v: RowValue): number {
-    const qty        = v.quantity_sold        ?? 0;
-    const disc       = v.discount_amount      ?? 0;
-    const commission = v.commission_per_sheet ?? 0;
-    const units      = Math.max(1, v.units_per_sheet ?? 1);
-    const wholesale  = v.wholesale_price_per_sheet ?? 0;
+    const qty           = v.quantity_sold ?? 0;
+    const price         = Math.max(0, v.selling_price ?? 0);
+    const wholesalePerPkt = v.wholesale_price_per_sheet ?? 0; // field holds per-packet wholesale
 
     if (v.sale_type === 'retail') {
-      // No delivery boy in retail — owner keeps the commission too
-      // Profit per sheet = 10% of price + commission
-      const sheetsUsed = qty / units;
-      return (wholesale * 0.10 + commission) * sheetsUsed;
+      // Retail: profit per packet = selling price (per packet) − wholesale cost per packet.
+      return (price - wholesalePerPkt) * qty;
     }
-    // Wholesale: 10% profit margin from wholesale price
-    return (wholesale * 0.10 - disc) * qty;
+    // Wholesale: 10% of per-sheet wholesale cost (wholesale_price_per_sheet × units_per_sheet).
+    return wholesalePerPkt * (v.units_per_sheet ?? 1) * 0.10 * qty;
   }
 
   // ── Grand totals ──────────────────────────────────────────────────────────
@@ -249,7 +245,7 @@ export class AdminBulkEntryComponent implements OnInit {
         sale_type:       v.sale_type,
         unit_type:       v.sale_type === 'retail' ? 'packet' : 'sheet',
         quantity_sold:   v.quantity_sold,
-        discount_amount: v.discount_amount,
+        selling_price:   v.selling_price,
       };
     });
     this.loading.show();

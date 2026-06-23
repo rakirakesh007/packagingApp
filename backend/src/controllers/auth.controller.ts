@@ -15,6 +15,6 @@ export async function login(req: Request, res: Response) {
   if (user.isActive === false) {
     return res.status(403).json({ message: 'Account is deactivated. Contact your admin.' });
   }
-  const token = signAuthToken({ id: String(user._id), role: user.role as AuthPayload['role'] });
+  const token = signAuthToken({ id: String(user._id), role: user.role as AuthPayload['role'], name: user.name ?? user.username });
   res.json({ token, user: { username: user.username, role: user.role } });
 }

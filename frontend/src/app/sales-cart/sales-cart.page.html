@@ -39,7 +39,7 @@
           @if (item.hindi_name) {
             <span class="text-xs text-gray-500">({{ item.item_name }})</span>
           }
-          <span class="item-price">₹{{ item.wholesale_price_per_sheet }}/sheet</span>
+          <span class="item-price">₹{{ sheetPrice(item) }}/sheet</span>
           @if (item.total_stock <= item.low_stock_threshold) {
             <span class="low-stock-badge">Low Stock</span>
           }
@@ -53,12 +53,12 @@
         </div>
         @if (getQty(item.id) > 0) {
           <div class="discount-row">
-            <span>Disc &#x20B9;</span>
+            <span>Price &#x20B9;</span>
             <input
               type="number"
               min="0"
-              [ngModel]="getDiscount(item.id)"
-              (ngModelChange)="setDiscount(item.id, +$event)"
+              [ngModel]="getPrice(item.id)"
+              (ngModelChange)="setPrice(item.id, +$event)"
               placeholder="0"
             />
             <span>/sheet</span>
@@ -98,11 +98,9 @@
               @if (ci.item.hindi_name) {
                 <span class="text-xs text-gray-500">({{ ci.item.item_name }})</span>
               }
-              @if (ci.discount_amount > 0) {
-                <span class="text-xs text-orange-500"> (disc. &#x20B9;{{ ci.discount_amount }}/sheet)</span>
-              }
+              <span class="text-xs text-gray-500"> @ &#x20B9;{{ ci.selling_price_per_sheet }}/sheet</span>
             </span>
-            <span>&#x20B9;{{ (ci.item.wholesale_price_per_sheet - ci.discount_amount) * ci.sheets_sold }}</span>
+            <span>&#x20B9;{{ ci.selling_price_per_sheet * ci.sheets_sold }}</span>
           </div>
         }
         <div class="checkout-total">

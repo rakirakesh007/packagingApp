@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 interface JwtPayload {
   id: string;
   role: 'admin' | 'delivery_boy';
+  name?: string;
   /** Expiry as Unix seconds (set by the backend's 7d token). */
   exp?: number;
 }
@@ -22,6 +23,8 @@ export class AuthService {
   userRole = signal<'admin' | 'delivery_boy' | null>(null);
   /** MongoDB _id of the currently logged-in user. */
   userId = signal<string | null>(null);
+  /** Display name of the currently logged-in user. */
+  userName = signal<string | null>(null);
   /** Raw JWT consumed by the auth interceptor. */
   token = signal<string | null>(localStorage.getItem('token'));
 
@@ -54,6 +57,7 @@ export class AuthService {
     this.isAuthenticated.set(false);
     this.userRole.set(null);
     this.userId.set(null);
+    this.userName.set(null);
     this.token.set(null);
     localStorage.removeItem('token');
   }
@@ -71,6 +75,7 @@ export class AuthService {
       this.isAuthenticated.set(true);
       this.userRole.set(payload.role);
       this.userId.set(payload.id);
+      this.userName.set(payload.name ?? null);
     } catch {
       this._clearState();
     }

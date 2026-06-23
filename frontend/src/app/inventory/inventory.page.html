@@ -33,13 +33,10 @@
           <tr class="text-left">
             <th class="px-4 py-3 font-semibold text-gray-700">Item Name</th>
             <th class="px-4 py-3 font-semibold text-gray-700">Hindi Name</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Stock</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Available</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Units/Sheet</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Qty/Unit (g)</th>
+            <th class="px-4 py-3 font-semibold text-gray-700" title="Total sheets owned in the warehouse">Stock</th>
+            <th class="px-4 py-3 font-semibold text-gray-700" title="Free to assign = Stock − sheets loaded on delivery boys">Available</th>
             <th class="px-4 py-3 font-semibold text-gray-700">MRP</th>
             <th class="px-4 py-3 font-semibold text-gray-700">Wholesale</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Ingredients</th>
             <th class="px-4 py-3 font-semibold text-gray-700 text-center">Actions</th>
           </tr>
         </thead>
@@ -63,14 +60,6 @@
                 }
               </td>
               <td class="px-4 py-3 text-gray-700">{{ (item.total_stock - (item.reserved_stock ?? 0)) | sheetQty:item.units_per_sheet }}</td>
-              <td class="px-4 py-3 text-gray-700 text-center">{{ item.units_per_sheet }}</td>
-              <td class="px-4 py-3 text-gray-700 text-center">
-                @if (item.quantity_per_unit) {
-                  {{ item.quantity_per_unit }}g
-                } @else {
-                  —
-                }
-              </td>
               <td class="px-4 py-3 text-gray-700">
                 @if (item.mrp_per_unit) {
                   ₹{{ item.mrp_per_unit }}
@@ -79,13 +68,6 @@
                 }
               </td>
               <td class="px-4 py-3 text-gray-700 font-semibold">₹{{ item.wholesale_price_per_sheet }}</td>
-              <td class="px-4 py-3 text-gray-500 text-xs max-w-[180px]">
-                @if (item.ingredients) {
-                  {{ item.ingredients }}
-                } @else {
-                  —
-                }
-              </td>
               <td class="px-4 py-3">
                 @if (isAdmin()) {
                   <div class="flex gap-1 justify-center flex-wrap">
@@ -116,7 +98,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+              <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                 @if (searchQuery()) {
                   No items match your search.
                 } @else {

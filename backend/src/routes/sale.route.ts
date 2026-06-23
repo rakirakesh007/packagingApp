@@ -8,25 +8,26 @@ import { requireAdmin, requireSelfOrAdmin } from '../middleware/auth.middleware'
 const router = Router();
 
 async function buildSaleItems(
-  items: Array<{ item_id: string; sheets_sold: number; discount_amount?: number; item_name?: string; hindi_name?: string; description?: string }>,
-): Promise<Array<{ item_id: string; sheets_sold: number; wholesale_price_per_sheet: number; discount_amount: number; final_price: number; profit: number; item_name: string; hindi_name: string; description: string }>> {
+  items: Array<{ item_id: string; sheets_sold: number; selling_price_per_sheet?: number; item_name?: string; hindi_name?: string; description?: string }>,
+): Promise<Array<{ item_id: string; sheets_sold: number; wholesale_price_per_sheet: number; selling_price_per_sheet: number; final_price: number; profit: number; item_name: string; hindi_name: string; description: string }>> {
   const inventoryDocs = await InventoryModel.find({ _id: { $in: items.map((item) => item.item_id) } }).lean();
-  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number }>(
+  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number; units_per_sheet?: number }>(
     inventoryDocs.map((doc) => [String(doc._id), doc])
   );
 
   return items.map((item) => {
     const inv = inventoryMap.get(item.item_id);
-    const wholesale     = inv?.wholesale_price_per_sheet ?? 0;
-    const discount       = item.discount_amount ?? 0;
-    const finalPerSheet  = Math.max(0, wholesale - discount);
+    const wholesale = inv?.wholesale_price_per_sheet ?? 0; // per-packet wholesale
+    const units     = Math.max(1, inv?.units_per_sheet ?? 1);
+    // Editable negotiated price; defaults to per-sheet wholesale (per-packet × units) when not provided.
+    const sellingPerSheet = Math.max(0, item.selling_price_per_sheet ?? wholesale * units);
     return {
       item_id:                   item.item_id,
       sheets_sold:               item.sheets_sold,
       wholesale_price_per_sheet: wholesale,
-      discount_amount:           discount,
-      final_price:               finalPerSheet * item.sheets_sold,
-      profit:                    finalPerSheet * 0.10 * item.sheets_sold,
+      selling_price_per_sheet:   sellingPerSheet,
+      final_price:               sellingPerSheet * item.sheets_sold,
+      profit:                    wholesale * units * 0.10 * item.sheets_sold,
       item_name:                 inv?.item_name  ?? item.item_name  ?? '',
       hindi_name:                inv?.hindi_name ?? item.hindi_name ?? '',
       description:               inv?.description ?? item.description ?? '',
@@ -63,9 +64,8 @@ router.post('/', async (req: Request, res: Response) => {
     const saleItems = await buildSaleItems(items);
 
     // Compute totals server-side from enriched sale items
-    const total_amount   = saleItems.reduce((sum, i) => sum + i.final_price, 0);
-    const total_discount = saleItems.reduce((sum, i) => sum + i.discount_amount * i.sheets_sold, 0);
-    const total_profit   = saleItems.reduce((sum, i) => sum + i.profit, 0);
+    const total_amount = saleItems.reduce((sum, i) => sum + i.final_price, 0);
+    const total_profit = saleItems.reduce((sum, i) => sum + i.profit, 0);
 
     // Decrement stock AND create the sale atomically (Golden Rule #1):
     //   total_stock    − item permanently sold
@@ -75,11 +75,18 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       await session.withTransaction(async () => {
         for (const item of items as { item_id: string; sheets_sold: number }[]) {
-          await InventoryModel.findByIdAndUpdate(
-            item.item_id,
+          const updated = await InventoryModel.findOneAndUpdate(
+            {
+              _id:            item.item_id,
+              total_stock:    { $gte: item.sheets_sold },
+              reserved_stock: { $gte: item.sheets_sold },
+            },
             { $inc: { total_stock: -item.sheets_sold, reserved_stock: -item.sheets_sold } },
             { session }
           );
+          if (!updated) {
+            throw new Error(`Insufficient stock for item ${item.item_id}`);
+          }
         }
 
         const [created] = await SaleModel.create(
@@ -90,7 +97,6 @@ router.post('/', async (req: Request, res: Response) => {
               shop_id,
               items: saleItems,
               total_amount,
-              total_discount,
               total_profit,
               payment_mode: payment_mode || 'cash',
               delivery_boy_id,
@@ -157,7 +163,8 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
       const saleType     = String(row['sale_type'] ?? 'wholesale') as 'wholesale' | 'retail';
       const unitType     = String(row['unit_type'] ?? 'sheet') as 'sheet' | 'packet';
       const quantitySold = Number(row['quantity_sold'] ?? row['sheets_sold'] ?? row['quantity'] ?? 0);
-      const discountAmount = Number(row['discount_amount'] ?? 0);
+      // Editable negotiated price: per-sheet for wholesale, per-packet for retail. 0 ⇒ fall back to default.
+      const sellingPrice = Number(row['selling_price'] ?? 0);
       return {
         shopName:      String(row['shopName'] ?? ''),
         shopMobile:    String(row['shopMobile'] ?? ''),
@@ -165,7 +172,7 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         saleType,
         unitType,
         quantitySold,
-        discountAmount,
+        sellingPrice,
         itemName:    String(row['itemName'] ?? ''),
         hindiName:   String(row['hindiName'] ?? ''),
         description: String(row['description'] ?? ''),
@@ -199,26 +206,29 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
       const wholesale    = inv?.wholesale_price_per_sheet ?? 0;
       const unitsPerSheet = Math.max(1, inv?.units_per_sheet ?? 10);
       const mrpPerUnit   = inv?.mrp_per_unit ?? 0;
-      const discount     = row.discountAmount;
 
       let sheetsSold: number;
       let packetsSold: number | null;
       let finalPrice: number;
       let profit: number;
+      let sellingPerSheet: number;
 
       if (row.saleType === 'retail') {
-        // Retail: quantity is in individual packets
+        // Retail: quantity is in individual packets; price is per packet (defaults to MRP).
+        // wholesale holds the per-packet wholesale cost, so profit = selling − wholesale per packet.
         packetsSold  = row.quantitySold;
         sheetsSold   = packetsSold / unitsPerSheet;           // fractional sheets consumed
-        finalPrice   = Math.max(0, mrpPerUnit - discount) * packetsSold;
-        profit       = finalPrice * 0.10;                    // 10% profit margin
+        const sellingPerUnit = Math.max(0, row.sellingPrice || mrpPerUnit);
+        finalPrice       = sellingPerUnit * packetsSold;
+        profit           = (sellingPerUnit - wholesale) * packetsSold;
+        sellingPerSheet  = sellingPerUnit * unitsPerSheet;    // normalized per-sheet snapshot
       } else {
-        // Wholesale: quantity is in sheets
+        // Wholesale: quantity is in sheets; price is per sheet (defaults to per-packet wholesale × units).
         sheetsSold  = row.quantitySold;
         packetsSold = null;
-        const finalPerSheet = Math.max(0, wholesale - discount);
-        finalPrice  = finalPerSheet * sheetsSold;
-        profit      = finalPerSheet * 0.10 * sheetsSold;
+        sellingPerSheet = Math.max(0, row.sellingPrice || wholesale * unitsPerSheet);
+        finalPrice  = sellingPerSheet * sheetsSold;
+        profit      = wholesale * unitsPerSheet * 0.10 * sheetsSold;
       }
 
       return {
@@ -233,7 +243,7 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
             sheets_sold:               sheetsSold,
             packets_sold:              packetsSold,
             wholesale_price_per_sheet: wholesale,
-            discount_amount:           discount,
+            selling_price_per_sheet:   sellingPerSheet,
             final_price:               finalPrice,
             profit,
             item_name:   inv?.item_name  ?? row.itemName  ?? '',
@@ -242,9 +252,6 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
           },
         ],
         total_amount:   finalPrice,
-        total_discount: row.saleType === 'retail'
-          ? discount * (packetsSold ?? 0)
-          : discount * sheetsSold,
         total_profit:   profit,
         payment_mode:   'cash',
         // ─ for stock deduction (keep alongside doc for the $inc loop below) ─

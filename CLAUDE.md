@@ -44,13 +44,17 @@ npx ts-node src/scripts/reset-dummy-data.ts
 
 ## Business golden rules (do not break)
 
-1. **Atomic stock.** Sales decrement inventory via Mongoose `$inc` inside a transaction (`sale.controller.ts`). Never overwrite stock from a frontend-computed number.
-2. **Server computes money.** The client sends only `sheets_sold` + `discount_amount`. The backend computes `final_price`, `profit`, `total_amount`, `total_discount`, `total_profit`. Never trust client totals.
+1. **Atomic stock.** Sales decrement inventory via Mongoose `$inc` inside a transaction (`sale.route.ts`). Never overwrite stock from a frontend-computed number.
+2. **Server computes money.** The client sends only `sheets_sold` (or packets) + `selling_price` (the editable negotiated price). The backend computes `final_price`, `profit`, `total_amount`, `total_profit`. Never trust client totals. There is no discount field.
 3. **Sheet-based inventory model:**
    - `total_stock` = sheets in the warehouse. `reserved_stock` = sheets loaded onto delivery boys but not yet sold. `available_stock` (admin UI only) = `total_stock − reserved_stock`.
    - Morning **assignment** moves stock into `reserved_stock`; a **sale** decrements **both** `total_stock` and `reserved_stock`.
    - Sale guard: `total_stock − reserved_stock ≥ sheets_sold` (enforced atomically with `$expr`).
-4. **Pricing:** `final_price = max(0, wholesale_price_per_sheet − discount_amount) × sheets_sold`; `profit = final_price × 0.10`. `wholesale_price_per_sheet` is read from the inventory record (snapshot onto the sale). Reference table in `frontend/src/app/core/pricing.config.ts`.
+4. **Pricing:** Selling price is **editable per sale** (negotiated). Note: `wholesale_price_per_sheet` in inventory actually holds the **per-packet** wholesale cost (legacy name).
+   - **Default price:** wholesale → `wholesale_price_per_sheet × units_per_sheet` (per sheet); retail → `mrp_per_unit` (per packet).
+   - **Wholesale (sheet):** `final_price = selling_price_per_sheet × sheets_sold`; `profit = (wholesale_price_per_sheet × units_per_sheet) × 0.10 × sheets_sold` (10% of per-sheet wholesale cost, NOT of selling price).
+   - **Retail (packet):** `final_price = selling_price_per_unit × packets`; `profit = (selling_price_per_unit − wholesale_price_per_sheet) × packets`.
+   - `selling_price_per_sheet` is stored normalized per sheet (retail = per-packet price × `units_per_sheet`).
 5. **Sale types:** `wholesale` (sell by whole sheet — delivery boys + admin) and `retail` (sell individual packets — admin only; `sheets_sold` may be fractional = `packets / units_per_sheet`).
 6. **Cold start:** Render free tier sleeps. Every primary action (login, sync, report) should drive `GlobalLoadingService` so the UI shows a loading state.
 7. **WhatsApp marketing:** On "Place Order", build a `wa.me/{mobile}?text=...` deep link with the itemised bill + digital catalog footer; new mobile numbers upsert a `Shop` record. Owner WhatsApp: `environment.ownerWhatsapp` (`918050991832`).

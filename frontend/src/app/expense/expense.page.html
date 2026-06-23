@@ -2,7 +2,8 @@
 <div class="p-4">
   <h2 class="text-xl font-bold mb-4">Expense Tracker</h2>
 
-  <form [formGroup]="expenseForm" (ngSubmit)="addExpense()" class="mb-6 flex flex-wrap gap-2">
+  <!-- Add / Edit form -->
+  <form [formGroup]="expenseForm" (ngSubmit)="saveExpense()" class="mb-4 flex flex-wrap items-center gap-2">
     <select formControlName="category" class="border rounded p-2" aria-label="Category">
       @for (cat of categories; track cat) {
         <option [value]="cat">{{ cat }}</option>
@@ -19,9 +20,16 @@
     />
 
     <input
+      formControlName="date"
+      type="date"
+      class="border rounded p-2"
+      aria-label="Date"
+    />
+
+    <input
       formControlName="description"
       placeholder="Description (optional)"
-      class="border rounded p-2 flex-1"
+      class="border rounded p-2 flex-1 min-w-[200px]"
       aria-label="Description"
     />
 
@@ -30,9 +38,54 @@
       [disabled]="expenseForm.invalid"
       class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded disabled:opacity-50"
     >
-      Add Expense
+      {{ editingId() ? 'Update' : 'Add Expense' }}
     </button>
+
+    @if (editingId()) {
+      <button
+        type="button"
+        (click)="cancelEdit()"
+        class="border border-gray-300 text-gray-700 font-semibold px-4 py-2 rounded hover:bg-gray-100"
+      >
+        Cancel
+      </button>
+    }
   </form>
+
+  <!-- Month selector + total -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        (click)="changeMonth(-1)"
+        class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 font-bold"
+        aria-label="Previous month"
+      >‹</button>
+
+      <input
+        type="month"
+        [value]="monthValue()"
+        (change)="onMonthChange($any($event.target).value)"
+        class="border rounded p-2"
+        aria-label="Select month"
+      />
+
+      <button
+        type="button"
+        (click)="changeMonth(1)"
+        [disabled]="isCurrentMonth()"
+        class="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 font-bold disabled:opacity-40"
+        aria-label="Next month"
+      >›</button>
+
+      <span class="text-sm text-gray-500 ml-1">{{ monthLabel() }}</span>
+    </div>
+
+    <div class="bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
+      <span class="text-sm text-gray-600 mr-2">Total ({{ monthLabel() }}):</span>
+      <span class="text-lg font-bold text-rose-700">₹{{ total() | number:'1.0-0' }}</span>
+    </div>
+  </div>
 
   <table class="w-full border-collapse border border-gray-200 text-sm">
     <thead class="bg-gray-100">
@@ -41,17 +94,22 @@
         <th class="border px-3 py-2 text-left">Category</th>
         <th class="border px-3 py-2 text-right">Amount</th>
         <th class="border px-3 py-2 text-left">Description</th>
-        <th class="border px-3 py-2"></th>
+        <th class="border px-3 py-2 text-center">Actions</th>
       </tr>
     </thead>
     <tbody>
       @for (expense of expenses(); track expense._id) {
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50" [class.bg-blue-50]="editingId() === expense._id">
           <td class="border px-3 py-2">{{ expense.date | date:'dd MMM yyyy' }}</td>
           <td class="border px-3 py-2">{{ expense.category }}</td>
           <td class="border px-3 py-2 text-right font-mono">₹{{ expense.amount }}</td>
           <td class="border px-3 py-2">{{ expense.description }}</td>
-          <td class="border px-3 py-2 text-center">
+          <td class="border px-3 py-2 text-center whitespace-nowrap">
+            <button
+              (click)="startEdit(expense)"
+              class="text-blue-500 hover:text-blue-700 font-semibold mr-3"
+              aria-label="Edit expense"
+            >✏️</button>
             <button
               (click)="deleteExpense(expense._id)"
               class="text-red-500 hover:text-red-700 font-bold"
@@ -61,7 +119,7 @@
         </tr>
       } @empty {
         <tr>
-          <td colspan="5" class="border px-3 py-4 text-center text-gray-400">No expenses recorded.</td>
+          <td colspan="5" class="border px-3 py-4 text-center text-gray-400">No expenses recorded for {{ monthLabel() }}.</td>
         </tr>
       }
     </tbody>

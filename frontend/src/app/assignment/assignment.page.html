@@ -62,7 +62,7 @@
           <tr>
             <th class="px-4 py-3 text-left font-semibold text-gray-600 w-8">#</th>
             <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
-            <th class="px-4 py-3 text-right font-semibold text-gray-600">Warehouse Stock</th>
+            <th class="px-4 py-3 text-right font-semibold text-gray-600" title="Free to load = total stock − stock already with delivery boys">Available Stock</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600">Unit Price (₹)</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600 w-32">Assign Qty</th>
           </tr>
@@ -142,4 +142,75 @@
       </span>
     </div>
   </form>
+
+  <!-- ── Current Load (running balance) ──────────────────────────────────── -->
+  @if (selectedBoyId()) {
+    <div class="mt-10">
+      <h2 class="text-xl font-bold mb-1">Current Load — {{ selectedBoyName() }}</h2>
+      <p class="text-sm text-gray-500 mb-4">
+        Everything this boy still holds (across all days). Returns release stock back to the warehouse.
+      </p>
+
+      <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
+              <th class="px-4 py-3 text-right font-semibold text-gray-600">Assigned</th>
+              <th class="px-4 py-3 text-right font-semibold text-gray-600">Sold</th>
+              <th class="px-4 py-3 text-right font-semibold text-gray-600">Returned</th>
+              <th class="px-4 py-3 text-right font-semibold text-gray-600">With Boy</th>
+              <th class="px-4 py-3 text-center font-semibold text-gray-600 w-64">Return</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 bg-white">
+            @for (h of holdings(); track h.item_id) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 font-medium text-gray-800">
+                  <div>{{ h.hindi_name || h.item_name }}</div>
+                  @if (h.hindi_name) {
+                    <div class="text-xs text-gray-500">({{ h.item_name }})</div>
+                  }
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600">{{ h.assigned | sheetQty:h.units_per_sheet }}</td>
+                <td class="px-4 py-2 text-right text-gray-600">{{ h.sold | sheetQty:h.units_per_sheet }}</td>
+                <td class="px-4 py-2 text-right text-gray-600">{{ h.returned | sheetQty:h.units_per_sheet }}</td>
+                <td class="px-4 py-2 text-right font-semibold text-blue-700">{{ h.withBoy | sheetQty:h.units_per_sheet }}</td>
+                <td class="px-4 py-2">
+                  <div class="flex items-center justify-end gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      [max]="h.withBoy"
+                      [value]="getReturnQty(h.item_id)"
+                      (input)="setReturnQty(h.item_id, +$any($event.target).value)"
+                      class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                    <button
+                      type="button"
+                      class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded disabled:opacity-40"
+                      [disabled]="getReturnQty(h.item_id) <= 0"
+                      (click)="recordReturn(h, getReturnQty(h.item_id))"
+                    >Return</button>
+                    <button
+                      type="button"
+                      class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold px-3 py-1.5 rounded"
+                      (click)="returnAll(h)"
+                    >Return all</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="px-4 py-10 text-center text-gray-400">
+                  Nothing currently loaded with this delivery boy.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 </div>

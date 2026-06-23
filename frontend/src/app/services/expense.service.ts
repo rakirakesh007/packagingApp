@@ -6,12 +6,18 @@ import { Expense } from '../models/expense.model';
 export class ExpenseService {
   private http = inject(HttpClient);
 
-  getExpenses() {
-    return this.http.get<Expense[]>('/expenses');
+  /** List expenses, optionally scoped to a calendar month (month: 1-12). */
+  getExpenses(month?: number, year?: number) {
+    const q = month && year ? `?month=${month}&year=${year}` : '';
+    return this.http.get<Expense[]>(`/expenses${q}`);
   }
 
-  addExpense(data: { category: string; amount: number; description?: string; date?: Date }) {
+  addExpense(data: { category: string; amount: number; description?: string; date?: string }) {
     return this.http.post<Expense>('/expenses', data);
+  }
+
+  updateExpense(id: string, data: { category: string; amount: number; description?: string; date?: string }) {
+    return this.http.put<Expense>(`/expenses/${id}`, data);
   }
 
   deleteExpense(id: string) {

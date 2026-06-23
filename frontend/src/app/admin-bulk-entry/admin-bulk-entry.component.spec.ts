@@ -29,12 +29,13 @@ describe('AdminBulkEntryComponent', () => {
   });
 
   it('should calculate grand total correctly', () => {
-    component.rows.at(0).patchValue({ quantity_sold: 2, wholesale_price_per_sheet: 50, discount_amount: 0, sale_type: 'wholesale' });
+    component.rows.at(0).patchValue({ quantity_sold: 2, wholesale_price_per_sheet: 50, selling_price: 50, sale_type: 'wholesale' });
     expect(component.grandTotal()).toBe(100);
   });
 
   it('should calculate total profit correctly', () => {
-    component.rows.at(0).patchValue({ quantity_sold: 2, wholesale_price_per_sheet: 50, discount_amount: 0, sale_type: 'wholesale' });
-    expect(component.totalProfit()).toBe(40);
+    // Wholesale profit = 10% of selling price × qty = 0.10 × 50 × 2 = 10
+    component.rows.at(0).patchValue({ quantity_sold: 2, wholesale_price_per_sheet: 50, selling_price: 50, sale_type: 'wholesale' });
+    expect(component.totalProfit()).toBe(10);
   });
 });

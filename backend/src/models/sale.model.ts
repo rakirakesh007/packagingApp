@@ -9,10 +9,10 @@ const saleItemSchema = new Schema(
     sheets_sold:               { type: Number, required: true, min: 0.001 },
     // packets_sold: set only for retail sales; null for wholesale
     packets_sold:              { type: Number, default: null },
-    // wholesale_price_per_sheet: snapshot from inventory at time of sale
+    // wholesale_price_per_sheet: snapshot from inventory at time of sale (default price + retail cost basis)
     wholesale_price_per_sheet: { type: Number, required: true, min: 0, default: 0 },
-    // discount_amount: per-sheet discount (wholesale) or per-packet discount (retail)
-    discount_amount:           { type: Number, required: true, min: 0, default: 0 },
+    // selling_price_per_sheet: actual negotiated rate charged, normalized per sheet (retail = per-packet price × units_per_sheet)
+    selling_price_per_sheet:   { type: Number, required: true, min: 0, default: 0 },
     // final_price: revenue collected for this line item (backend-computed, never trust frontend)
     final_price:               { type: Number, required: true, min: 0, default: 0 },
     // profit: final_price minus production cost allocated to sheets consumed
@@ -39,9 +39,7 @@ const saleSchema = new Schema(
       },
     },
     total_amount:   { type: Number, required: true, min: 0 },
-    // total_discount: sum of (discount_amount × sheets_sold) per item — measures discount impact on revenue
-    total_discount: { type: Number, required: true, min: 0, default: 0 },
-    // total_profit: sum of (final_price × 0.10) per item — realized gross profit (10% margin on selling price)
+    // total_profit: sum of per-item profit (wholesale = 10% of selling price; retail = selling − wholesale cost)
     total_profit:   { type: Number, required: true, default: 0 },
     payment_mode:   { type: String, enum: ['cash', 'online', 'pending'], required: true, default: 'cash' },
     timestamp:    { type: Date, required: true, default: () => new Date(), index: true },

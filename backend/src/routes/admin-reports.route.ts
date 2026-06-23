@@ -70,6 +70,46 @@ router.get('/today', async (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /admin/reports/item-sales?month=&year= — item-wise quantity sold for a month
+ * (defaults to the current month). Returns ALL items sold, sorted by quantity desc.
+ */
+router.get('/item-sales', async (req: Request, res: Response) => {
+  try {
+    const { start, end } = resolveMonthRange(req.query['month'] as string | undefined, req.query['year'] as string | undefined);
+    const sales = await SaleModel.find({ timestamp: { $gte: start, $lte: end } });
+
+    const itemMap = new Map<string, { item_id: string; item_name: string; hindi_name: string; sheets_sold: number }>();
+    sales.forEach(sale => {
+      sale.items.forEach(item => {
+        const key = String(item.item_id);
+        const cur = itemMap.get(key) ?? { item_id: key, item_name: (item as any).item_name || '', hindi_name: (item as any).hindi_name || '', sheets_sold: 0 };
+        cur.sheets_sold += (item as any).sheets_sold ?? 0;
+        itemMap.set(key, cur);
+      });
+    });
+
+    // Attach units_per_sheet + mrp_per_unit (variants share a name, so MRP disambiguates).
+    const ids = [...itemMap.keys()];
+    const invDocs = ids.length
+      ? await InventoryModel.find({ _id: { $in: ids } }, { units_per_sheet: 1, mrp_per_unit: 1 }).lean()
+      : [];
+    const invMap = new Map(invDocs.map(d => [String(d._id), d]));
+    const items = [...itemMap.values()]
+      .map(item => ({
+        ...item,
+        units_per_sheet: (invMap.get(item.item_id) as any)?.units_per_sheet ?? 1,
+        mrp_per_unit:    (invMap.get(item.item_id) as any)?.mrp_per_unit ?? 0,
+      }))
+      .sort((a, b) => b.sheets_sold - a.sheets_sold);
+
+    return res.json(items);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
  * GET /admin/reports/eod-by-product — today stock grouped by item.
  */
 router.get('/eod-by-product', async (_req: Request, res: Response) => {
@@ -193,7 +233,6 @@ router.get('/monthly', async (req: Request, res: Response) => {
     const expenses = await ExpenseModel.find({ date: { $gte: start, $lte: end } });
 
     const totalRevenue   = sales.reduce((sum, s) => sum + s.total_amount, 0);
-    const totalDiscount  = sales.reduce((sum, s) => sum + ((s as any).total_discount ?? 0), 0);
     const totalProfit    = sales.reduce((sum, s) => sum + ((s as any).total_profit  ?? 0), 0);
     const totalExpenses  = expenses.reduce((sum, e) => sum + e.amount, 0);
     // netProfit = gross profit from production margins minus operational expenses
@@ -203,7 +242,6 @@ router.get('/monthly', async (req: Request, res: Response) => {
       month: monthNumber + 1,
       year: yearNumber,
       totalRevenue,
-      totalDiscount,          // revenue lost to negotiated discounts
       totalProfit,            // gross profit (final price − production cost) before expenses
       totalExpenses,
       netProfit,              // totalProfit − totalExpenses
@@ -236,7 +274,7 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
       : [];
     const userMap = new Map(users.map((user) => [String(user._id), user]));
 
-    const grouped = new Map<string, { deliveryBoyId: string; boyName: string; totalSheets: number; totalSales: number; totalDiscount: number; totalProfit: number; totalCashCollected: number; netCash: number; paymentStatus: string }>();
+    const grouped = new Map<string, { deliveryBoyId: string; boyName: string; totalSheets: number; totalSales: number; totalProfit: number; totalCashCollected: number; netCash: number; paymentStatus: string }>();
 
     sales.forEach((sale) => {
       const deliveryBoyId = String(sale.delivery_boy_id);
@@ -245,7 +283,6 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
         boyName: userMap.get(deliveryBoyId)?.name || userMap.get(deliveryBoyId)?.username || deliveryBoyId,
         totalSheets: 0,
         totalSales: 0,
-        totalDiscount: 0,
         totalProfit: 0,
         totalCashCollected: 0,
         netCash: 0,
@@ -257,7 +294,6 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
 
       existing.totalSheets  += saleSheets;
       existing.totalSales   += saleCash;
-      existing.totalDiscount += ((sale as any).total_discount ?? 0);
       existing.totalProfit   += ((sale as any).total_profit   ?? 0);
       existing.totalCashCollected += sale.payment_mode === 'cash' ? saleCash : 0;
       existing.netCash = existing.totalCashCollected;

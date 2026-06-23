@@ -37,7 +37,7 @@ interface MonthlySummary {
   month: number;
   year: number;
   totalRevenue: number;
-  totalDiscount: number;
+  totalProfit: number;
   totalExpenses: number;
   netProfit: number;
 }
@@ -72,7 +72,7 @@ export class AdminReportsPage implements OnInit {
   monthlySummary = signal<MonthlySummary>({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    totalRevenue: 0, totalDiscount: 0, totalExpenses: 0, netProfit: 0,
+    totalRevenue: 0, totalProfit: 0, totalExpenses: 0, netProfit: 0,
   });
   staffMonthly = signal<StaffRow[]>([]);
   selectedMonth = signal(this.currentMonthKey());
@@ -169,7 +169,7 @@ export class AdminReportsPage implements OnInit {
       <h1>DesiMasalaHub — Monthly Report</h1><h2>${label}</h2>
       <div class="grid">
         <div class="card"><div class="label">Revenue</div><div class="value">₹${summary.totalRevenue.toFixed(0)}</div></div>
-        <div class="card"><div class="label">Discounts</div><div class="value">₹${(summary.totalDiscount ?? 0).toFixed(0)}</div></div>
+        <div class="card"><div class="label">Gross Profit</div><div class="value">₹${(summary.totalProfit ?? 0).toFixed(0)}</div></div>
         <div class="card"><div class="label">Expenses</div><div class="value">₹${summary.totalExpenses.toFixed(0)}</div></div>
         <div class="card"><div class="label">Net Profit</div><div class="value">₹${summary.netProfit.toFixed(0)}</div></div>
       </div>

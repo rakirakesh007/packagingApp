@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
-  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -41,6 +40,15 @@ interface LowStockItem {
   low_stock_threshold: number;
 }
 
+interface ItemSold {
+  item_id: string;
+  item_name: string;
+  hindi_name: string;
+  units_per_sheet: number;
+  mrp_per_unit: number;
+  sheets_sold: number;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -58,15 +66,13 @@ export class AdminDashboardPage implements OnInit {
   });
   eodSummary   = signal<EodBoy[]>([]);
   lowStock     = signal<LowStockItem[]>([]);
-
-  maxSheets = computed(() => {
-    const tops = this.todayStats().topItems;
-    return tops.length ? Math.max(...tops.map(t => t.sheets_sold)) : 1;
-  });
+  monthItems   = signal<ItemSold[]>([]);
 
   todayLabel = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
+
+  monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
   ngOnInit(): void { this.loadDashboard(); }
 
@@ -77,10 +83,12 @@ export class AdminDashboardPage implements OnInit {
       today:     this.http.get<TodayStats>('/admin/reports/today').pipe(catchError(() => of(defaultToday))),
       eod:       this.http.get<EodBoy[]>('/admin/reports/eod').pipe(catchError(() => of([] as EodBoy[]))),
       inventory: this.http.get<LowStockItem[]>('/inventory').pipe(catchError(() => of([] as LowStockItem[]))),
+      itemSales: this.http.get<ItemSold[]>('/admin/reports/item-sales').pipe(catchError(() => of([] as ItemSold[]))),
     }).subscribe({
-      next: ({ today, eod, inventory }) => {
+      next: ({ today, eod, inventory, itemSales }) => {
         this.todayStats.set(today);
         this.eodSummary.set(eod);
+        this.monthItems.set(itemSales);
         this.lowStock.set(
           inventory.filter(i => (i.total_stock - (i.reserved_stock ?? 0)) <= i.low_stock_threshold)
         );
@@ -90,8 +98,4 @@ export class AdminDashboardPage implements OnInit {
     });
   }
 
-  barWidth(sheets: number): number {
-    const max = this.maxSheets();
-    return max > 0 ? Math.round((sheets / max) * 100) : 0;
-  }
 }

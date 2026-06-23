@@ -13,11 +13,12 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
-import { AssignmentService, User } from '../services/assignment.service';
+import { AssignmentService, User, Holding } from '../services/assignment.service';
 import { InventoryService } from '../services/inventory.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
+import { ToastService } from '../services/toast.service';
 import { InventoryItem } from '../models/inventory.model';
-import { getPricingRule } from '../core/pricing.config';
+import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
@@ -26,7 +27,7 @@ function todayISO(): string {
 @Component({
   selector: 'app-assignment',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SheetQtyPipe],
   templateUrl: './assignment.page.html',
   styleUrls: ['./assignment.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +37,7 @@ export class AssignmentPage implements OnInit {
   private assignmentService = inject(AssignmentService);
   private inventoryService  = inject(InventoryService);
   private loading           = inject(GlobalLoadingService);
+  private toast             = inject(ToastService);
 
   // ── Signals ───────────────────────────────────────────────────────────────
   deliveryBoys    = signal<User[]>([]);
@@ -44,6 +46,13 @@ export class AssignmentPage implements OnInit {
   submitError     = signal('');
   submitSuccess   = signal(false);
   alreadyAssigned = signal(false);
+
+  // ── Current Load (running balance) ─────────────────────────────────────────
+  holdings  = signal<Holding[]>([]);
+  returnQty = signal<Map<string, number>>(new Map());
+
+  selectedBoyName = (): string =>
+    this.deliveryBoys().find((b) => b._id === this.selectedBoyId())?.name ?? '';
 
   // ── Form ──────────────────────────────────────────────────────────────────
   form = this.fb.group({ rows: this.fb.array<FormGroup>([]) });
@@ -89,18 +98,16 @@ export class AssignmentPage implements OnInit {
   private buildRows(items: InventoryItem[]): void {
     this.rows.clear();
     for (const item of items) {
-      // Get correct wholesale price from pricing config based on MRP
-      const rule = getPricingRule(item.mrp_per_unit || 0);
-      const correctWholesalePrice = rule?.wholesalePricePerSheet ?? item.wholesale_price_per_sheet ?? 0;
-
+      // Available = total_stock − reserved (what's free to load; reserved is already out with boys).
+      const available = Math.max(0, item.total_stock - (item.reserved_stock ?? 0));
       this.rows.push(this.fb.group({
         item_id:         [item.id],
         item_name:       [item.item_name],
         hindi_name:      [item.hindi_name ?? ''],
         mrp_per_unit:    [item.mrp_per_unit ?? 0],
-        wholesale_price_per_sheet: [correctWholesalePrice],
-        warehouse_stock: [item.total_stock],
-        assignedQty: [0, [Validators.min(0), Validators.max(item.total_stock)]],
+        wholesale_price_per_sheet: [item.wholesale_price_per_sheet ?? 0],
+        warehouse_stock: [available],
+        assignedQty: [0, [Validators.min(0), Validators.max(available)]],
       }));
     }
     this.recalcTotals();
@@ -112,6 +119,50 @@ export class AssignmentPage implements OnInit {
     this.submitError.set('');
     this.submitSuccess.set(false);
     this.alreadyAssigned.set(false);
+    this.loadHoldings();
+  }
+
+  private loadHoldings(): void {
+    const id = this.selectedBoyId();
+    if (!id) { this.holdings.set([]); return; }
+    this.assignmentService.getHoldings(id).subscribe({
+      next: (data) => this.holdings.set(data),
+      error: (err) => console.error('Holdings fetch failed:', err),
+    });
+  }
+
+  getReturnQty(itemId: string): number {
+    return this.returnQty().get(itemId) ?? 0;
+  }
+
+  setReturnQty(itemId: string, qty: number): void {
+    this.returnQty.update((m) => {
+      const next = new Map(m);
+      next.set(itemId, Math.max(0, qty));
+      return next;
+    });
+  }
+
+  recordReturn(h: Holding, qty: number): void {
+    const amount = Math.min(Math.max(0, qty), h.withBoy);
+    if (amount <= 0) return;
+    this.loading.show();
+    this.assignmentService.returnItems(this.selectedBoyId(), [{ item_id: h.item_id, qty: amount }]).subscribe({
+      next: (updated) => {
+        this.holdings.set(updated);
+        this.setReturnQty(h.item_id, 0);
+        this.toast.success('Return recorded.');
+        this.loading.hide();
+      },
+      error: (err) => {
+        this.loading.hide();
+        this.toast.error(err?.error?.message ?? 'Could not record return.');
+      },
+    });
+  }
+
+  returnAll(h: Holding): void {
+    this.recordReturn(h, h.withBoy);
   }
 
   onDateChange(date: string): void {
@@ -170,7 +221,8 @@ export class AssignmentPage implements OnInit {
             row.get('assignedQty')?.setValidators([Validators.min(0), Validators.max(newStock)]);
             row.get('assignedQty')?.updateValueAndValidity();
           });
-          this.selectedBoyId.set('');
+          // Keep the boy selected and refresh the Current Load panel.
+          this.loadHoldings();
         },
         error: (err) => {
           this.loading.hide();

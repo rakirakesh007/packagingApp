@@ -2,8 +2,8 @@
   <h1 class="text-2xl font-bold mb-1">Admin Bulk Entry</h1>
   <p class="text-sm text-gray-500 mb-4">
     Record sales in bulk. Toggle <strong class="text-blue-600">Sheet</strong> (wholesale — sell full sheets) or
-    <strong class="text-orange-500">Pkt</strong> (retail — sell individual packets at MRP) per row.
-    Prices auto-fill from inventory.
+    <strong class="text-orange-500">Pkt</strong> (retail — sell individual packets) per row.
+    Price auto-fills (wholesale for sheets, MRP for packets) and is editable per row.
   </p>
 
   @if (submitSuccess()) {
@@ -27,10 +27,8 @@
             <th class="border border-gray-300 px-3 py-2 whitespace-nowrap">Item *</th>
             <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Type</th>
             <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Qty</th>
-            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap text-center">Rate</th>
-            <th class="border border-gray-300 px-2 py-2 whitespace-nowrap text-center">Disc/Unit</th>
+            <th class="border border-gray-300 px-3 py-2 whitespace-nowrap text-center">Price/Unit</th>
             <th class="border border-gray-300 px-3 py-2 text-right">Subtotal</th>
-            <th class="border border-gray-300 px-3 py-2 text-center whitespace-nowrap">MRP</th>
             <th class="border border-gray-300 px-3 py-2 text-right">Profit</th>
             <th class="border border-gray-300 px-2 py-2"></th>
           </tr>
@@ -120,35 +118,24 @@
                 />
               </td>
 
-              <!-- Rate (auto-filled from pricing config) -->
-              <td class="border border-gray-300 px-2 py-1 text-center whitespace-nowrap">
-                @if (row.value.sale_type === 'retail') {
-                  <span class="text-xs font-mono text-orange-600">
-                    &#x20B9;{{ ((row.value.wholesale_price_per_sheet ?? 0) / (row.value.units_per_sheet || 1)) | number:'1.0-2' }}/pkt
-                  </span>
-                } @else {
-                  <span class="text-xs font-mono text-blue-600">₹{{ row.value.wholesale_price_per_sheet }}/sheet</span>
-                }
-              </td>
-
-              <!-- Discount per unit (per sheet for wholesale, per packet for retail) -->
-              <td class="border border-gray-300 p-1">
-                <input
-                  formControlName="discount_amount"
-                  type="number"
-                  min="0"
-                  class="w-20 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
-                  placeholder="0"
-                />
+              <!-- Editable selling price: per sheet (wholesale) or per packet (retail) -->
+              <td class="border border-gray-300 p-1 whitespace-nowrap">
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-gray-400">&#x20B9;</span>
+                  <input
+                    formControlName="selling_price"
+                    type="number"
+                    min="0"
+                    class="w-20 border-0 px-2 py-1 focus:ring-1 ring-blue-400 rounded"
+                    placeholder="0"
+                  />
+                  <span class="text-xs text-gray-400">{{ row.value.sale_type === 'retail' ? '/pkt' : '/sheet' }}</span>
+                </div>
               </td>
 
               <!-- Subtotal -->
               <td class="border border-gray-300 px-3 py-1 text-right font-mono">
                 ₹{{ rowSubtotal(i) | number:'1.0-0' }}
-              </td>
-              <!-- Commission: delivery boy (wholesale) or my profit (retail) -->
-              <td class="border border-gray-300 px-3 py-1 text-right font-mono text-blue-700">
-                &#x20B9;{{ row.value.commission_per_sheet ?? 0 }}
               </td>
               <!-- Profit -->
               <td
@@ -173,9 +160,8 @@
         </tbody>
         <tfoot class="bg-gray-50 font-bold">
           <tr>
-            <td colspan="7" class="border border-gray-300 px-3 py-2 text-right text-gray-600">Grand Totals:</td>
+            <td colspan="6" class="border border-gray-300 px-3 py-2 text-right text-gray-600">Grand Totals:</td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono">&#x20B9;{{ grandTotal() | number:'1.0-0' }}</td>
-            <td class="border border-gray-300"></td>
             <td class="border border-gray-300 px-3 py-2 text-right font-mono text-green-700">&#x20B9;{{ totalProfit() | number:'1.0-0' }}</td>
             <td class="border border-gray-300"></td>
           </tr>
@@ -187,11 +173,11 @@
     <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
       <span>
         <span class="inline-block w-3 h-3 rounded bg-blue-600 mr-1"></span>
-        <strong>Sheet</strong> — wholesale; profit = (wholesale × 0.10 − discount) per sheet.
+        <strong>Sheet</strong> — wholesale; profit = 10% of selling price per sheet.
       </span>
       <span>
         <span class="inline-block w-3 h-3 rounded bg-orange-500 mr-1"></span>
-        <strong>Pkt</strong> — retail at (wholesale ÷ units)/pkt; profit = (wholesale × 0.10 + commission) per sheet used.
+        <strong>Pkt</strong> — retail; profit = (selling price − wholesale ÷ units) per packet.
       </span>
     </div>
 

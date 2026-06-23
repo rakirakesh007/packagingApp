@@ -10,12 +10,11 @@ export interface Sale {
     description?: string;
     sheets_sold: number;
     wholesale_price_per_sheet: number;
-    discount_amount: number;
+    selling_price_per_sheet: number;
     final_price: number;
     profit: number;
   }[];
   total_amount: number;
-  total_discount: number;
   total_profit: number;
   payment_mode: 'cash' | 'online' | 'pending';
   delivery_boy_id: string;
