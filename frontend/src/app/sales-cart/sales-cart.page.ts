@@ -50,6 +50,8 @@ export class SalesCartPage implements OnInit {
   shopMobile   = signal('');
   paymentMode  = signal<'cash' | 'online'>('cash');
   orderSuccess = signal(false);
+  /** URL to send WhatsApp bill to the customer — set after order, cleared on next order. */
+  customerWhatsAppUrl = signal<string | null>(null);
   /** Guards against double-tapping Place Order while the sale request is in flight. */
   submitting   = signal(false);
   noAssignment = signal(false);   // true when no stock currently held by this boy
@@ -258,7 +260,7 @@ export class SalesCartPage implements OnInit {
       })
       .join('\n');
 
-    // Bill to the shop (customer)
+    // Build customer bill URL (tap button shown in UI — direct user gesture avoids popup blocker)
     if (mobile) {
       const catalog = this.generateCatalog(this.catalogItems());
       const shopMsg = [
@@ -270,10 +272,12 @@ export class SalesCartPage implements OnInit {
         `To order again, contact Rakesh: wa.me/${environment.ownerWhatsapp}`,
         ...(catalog ? ['', catalog] : []),
       ].join('\n');
-      window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(shopMsg)}`, '_blank');
+      this.customerWhatsAppUrl.set(`https://wa.me/91${mobile}?text=${encodeURIComponent(shopMsg)}`);
+    } else {
+      this.customerWhatsAppUrl.set(null);
     }
 
-    // Notify owner on every sale
+    // Notify owner automatically (single window.open — no popup blocker conflict)
     const boyName  = this.auth.userName() ?? 'Delivery Boy';
     const ownerMsg = [
       `🚚 Sale — ${boyName}`,
@@ -282,6 +286,11 @@ export class SalesCartPage implements OnInit {
       `Total: ₹${this.cartTotal()} | Payment: ${mode}`,
     ].join('\n');
     window.open(`https://wa.me/${environment.ownerWhatsapp}?text=${encodeURIComponent(ownerMsg)}`, '_blank');
+  }
+
+  sendCustomerWhatsApp(): void {
+    const url = this.customerWhatsAppUrl();
+    if (url) window.open(url, '_blank');
   }
 
   /**
@@ -318,5 +327,6 @@ export class SalesCartPage implements OnInit {
     this.shopMobile.set('');
     this.paymentMode.set('cash');
     this.showCheckout.set(false);
+    // customerWhatsAppUrl kept intentionally until next order so user can still tap Send Bill
   }
 }

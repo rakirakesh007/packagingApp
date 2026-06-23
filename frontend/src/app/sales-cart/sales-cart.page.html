@@ -17,7 +17,12 @@
 
   <!-- Success Toast -->
   @if (orderSuccess()) {
-    <div class="toast-success" role="status">✅ Order placed successfully!</div>
+    <div class="toast-success" role="status">
+      ✅ Order placed!
+      @if (customerWhatsAppUrl()) {
+        <button class="btn-send-bill" (click)="sendCustomerWhatsApp()">📲 Send Bill to Customer</button>
+      }
+    </div>
   }
 
   <!-- No assignment empty state -->

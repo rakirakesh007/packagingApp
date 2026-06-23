@@ -63,7 +63,7 @@
             <th class="px-4 py-3 text-left font-semibold text-gray-600 w-8">#</th>
             <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600" title="Free to load = total stock − stock already with delivery boys">Available Stock</th>
-            <th class="px-4 py-3 text-right font-semibold text-gray-600">Unit Price (₹)</th>
+            <th class="px-4 py-3 text-right font-semibold text-gray-600">Sheet Price (₹)</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600 w-32">Assign Qty</th>
           </tr>
         </thead>
@@ -83,7 +83,7 @@
                 }
               </td>
               <td class="px-4 py-2 text-right text-gray-600">{{ row.get('warehouse_stock')?.value }}</td>
-              <td class="px-4 py-2 text-right text-gray-600">₹{{ row.get('wholesale_price_per_sheet')?.value | number:'1.2-2' }}/sheet</td>
+              <td class="px-4 py-2 text-right text-gray-600">₹{{ (row.get('wholesale_price_per_sheet')?.value * row.get('units_per_sheet')?.value) | number:'1.0-0' }}/sheet</td>
               <td class="px-4 py-2 text-right">
                 <input
                   type="number"
@@ -158,8 +158,7 @@
               <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
               <th class="px-4 py-3 text-right font-semibold text-gray-600">Assigned</th>
               <th class="px-4 py-3 text-right font-semibold text-gray-600">Sold</th>
-              <th class="px-4 py-3 text-right font-semibold text-gray-600">Returned</th>
-              <th class="px-4 py-3 text-right font-semibold text-gray-600">With Boy</th>
+              <th class="px-4 py-3 text-right font-semibold text-gray-600">Balance</th>
               <th class="px-4 py-3 text-center font-semibold text-gray-600 w-64">Return</th>
             </tr>
           </thead>
@@ -174,7 +173,6 @@
                 </td>
                 <td class="px-4 py-2 text-right text-gray-600">{{ h.assigned | sheetQty:h.units_per_sheet }}</td>
                 <td class="px-4 py-2 text-right text-gray-600">{{ h.sold | sheetQty:h.units_per_sheet }}</td>
-                <td class="px-4 py-2 text-right text-gray-600">{{ h.returned | sheetQty:h.units_per_sheet }}</td>
                 <td class="px-4 py-2 text-right font-semibold text-blue-700">{{ h.withBoy | sheetQty:h.units_per_sheet }}</td>
                 <td class="px-4 py-2">
                   <div class="flex items-center justify-end gap-2">
@@ -203,7 +201,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="px-4 py-10 text-center text-gray-400">
+                <td colspan="5" class="px-4 py-10 text-center text-gray-400">
                   Nothing currently loaded with this delivery boy.
                 </td>
               </tr>

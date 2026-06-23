@@ -306,10 +306,26 @@
   transform: translateX(-50%);
   background: #166534;
   color: #dcfce7;
-  padding: 0.6rem 1.5rem;
+  padding: 0.6rem 1.2rem;
   border-radius: 24px;
   font-size: 0.9rem;
   font-weight: 600;
   z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   white-space: nowrap;
+}
+
+.btn-send-bill {
+  background: #15803d;
+  border: 1.5px solid #86efac;
+  color: #dcfce7;
+  border-radius: 16px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  &:active { background: #166534; }
 }

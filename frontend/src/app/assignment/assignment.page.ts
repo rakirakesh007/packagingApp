@@ -106,6 +106,7 @@ export class AssignmentPage implements OnInit {
         hindi_name:      [item.hindi_name ?? ''],
         mrp_per_unit:    [item.mrp_per_unit ?? 0],
         wholesale_price_per_sheet: [item.wholesale_price_per_sheet ?? 0],
+        units_per_sheet: [item.units_per_sheet ?? 12],
         warehouse_stock: [available],
         assignedQty: [0, [Validators.min(0), Validators.max(available)]],
       }));
