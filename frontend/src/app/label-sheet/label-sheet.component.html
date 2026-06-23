@@ -45,10 +45,13 @@
               }
             </div>
 
-            <!-- FSSAI & License (inline, vertically centered) -->
+            <!-- FSSAI & License — logo + label on row 1, number on row 2 -->
             <div class="fssai-section">
-              <img src="assets/fssai-logo.png" alt="FSSAI Logo" class="fssai-logo" />
-              <span class="fssai-text">Lic No. : {{ labelSheetConfig.fssaiNo }}</span>
+              <div class="fssai-row1">
+                <img src="assets/fssai-logo.png" alt="FSSAI" class="fssai-logo" />
+                <span class="fssai-label">Lic No.:</span>
+              </div>
+              <div class="fssai-number">{{ labelSheetConfig.fssaiNo }}</div>
             </div>
 
             <!-- Ingredients (only shown when set) -->
