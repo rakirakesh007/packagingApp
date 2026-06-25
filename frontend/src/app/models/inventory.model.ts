@@ -16,4 +16,5 @@ export interface InventoryItem {
   low_stock_threshold: number;
   image_url?: string;
   ingredients?: string;
+  search_aliases?: string;
 }

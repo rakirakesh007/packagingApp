@@ -74,6 +74,12 @@ const inventorySchema = new Schema(
       trim: true,
       default: '',
     },
+    // search_aliases: space/comma-separated alternate names for search (e.g. "methi, fenugreek seeds")
+    search_aliases: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     versionKey: false,

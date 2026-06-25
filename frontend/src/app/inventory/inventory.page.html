@@ -153,6 +153,11 @@
             <input [(ngModel)]="formIngredients" name="formIngredients" class="w-full border rounded-lg p-3" placeholder="e.g. Coriander, Salt, Red Chilli, Turmeric" />
           </label>
 
+          <label class="block md:col-span-2">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Search Keywords <span class="text-gray-400 font-normal">(alternate / romanized names for search)</span></span>
+            <input [(ngModel)]="formSearchAliases" name="formSearchAliases" class="w-full border rounded-lg p-3" placeholder="e.g. methi, fenugreek seeds, सौंफ fennel" />
+          </label>
+
           <label class="block">
             <span class="block text-sm font-medium text-gray-700 mb-1">Stock</span>
             <input [(ngModel)]="formStock" name="formStock" type="number" class="w-full border rounded-lg p-3" min="0" />

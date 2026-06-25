@@ -48,7 +48,8 @@ export class InventoryPage implements OnInit {
           (item) =>
             item.item_name.toLowerCase().includes(query) ||
             (item.hindi_name ?? '').toLowerCase().includes(query) ||
-            (item.description ?? '').toLowerCase().includes(query)
+            (item.description ?? '').toLowerCase().includes(query) ||
+            (item.search_aliases ?? '').toLowerCase().includes(query)
         )
       : this.items();
   });
@@ -78,6 +79,7 @@ export class InventoryPage implements OnInit {
   formStock = 0;
   formThreshold = 5;
   formIngredients = '';
+  formSearchAliases = '';
 
   ngOnInit(): void {
     this.fetchItems();
@@ -111,7 +113,8 @@ export class InventoryPage implements OnInit {
     this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
     this.formStock       = item.total_stock;
     this.formThreshold   = item.low_stock_threshold;
-    this.formIngredients = item.ingredients ?? '';
+    this.formIngredients    = item.ingredients ?? '';
+    this.formSearchAliases  = item.search_aliases ?? '';
     this.showItemModal.set(true);
   }
 
@@ -141,6 +144,7 @@ export class InventoryPage implements OnInit {
       total_stock:                Number(this.formStock) || 0,
       low_stock_threshold:        Number(this.formThreshold) || 0,
       ingredients:                this.formIngredients.trim(),
+      search_aliases:             this.formSearchAliases.trim(),
     };
 
     this.loading.show();
@@ -174,7 +178,8 @@ export class InventoryPage implements OnInit {
     this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
     this.formStock       = 0;
     this.formThreshold   = item.low_stock_threshold;
-    this.formIngredients = item.ingredients ?? '';
+    this.formIngredients   = item.ingredients ?? '';
+    this.formSearchAliases = item.search_aliases ?? '';
     this.showItemModal.set(true);
   }
 
@@ -237,7 +242,8 @@ export class InventoryPage implements OnInit {
     this.formWholesalePricePerSheet = 0;
     this.formStock       = 0;
     this.formThreshold   = 5;
-    this.formIngredients = '';
+    this.formIngredients   = '';
+    this.formSearchAliases = '';
   }
 
   addItem(): void {
