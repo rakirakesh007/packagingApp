@@ -54,6 +54,17 @@
     </div>
   }
 
+  <!-- Search -->
+  <div class="mb-4">
+    <input
+      type="search"
+      class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      placeholder="Search items (English or Hindi)…"
+      [value]="searchQuery()"
+      (input)="searchQuery.set($any($event.target).value)"
+    />
+  </div>
+
   <!-- Spreadsheet table -->
   <form [formGroup]="form">
     <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
@@ -69,13 +80,14 @@
         </thead>
 
         <tbody formArrayName="rows" class="divide-y divide-gray-100 bg-white">
-          @for (row of rows.controls; track $index) {
+          @for (i of filteredIndices(); track i) {
+            @let row = rows.at(i);
             <tr
-              [formGroupName]="$index"
+              [formGroupName]="i"
               class="hover:bg-blue-50 transition-colors"
               [class.bg-blue-50]="row.get('assignedQty')?.value > 0"
             >
-              <td class="px-4 py-2 text-gray-400 text-xs">{{ $index + 1 }}</td>
+              <td class="px-4 py-2 text-gray-400 text-xs">{{ i + 1 }}</td>
               <td class="px-4 py-2 font-medium text-gray-800">
                 <div>{{ row.get('hindi_name')?.value || row.get('item_name')?.value }}</div>
                 @if (row.get('hindi_name')?.value) {
@@ -93,7 +105,7 @@
                   [class.border-gray-300]="!row.get('assignedQty')?.invalid || !row.get('assignedQty')?.touched"
                   min="0"
                   [max]="row.get('warehouse_stock')?.value"
-                  (keydown.enter)="onEnter($event, $index)"
+                  (keydown.enter)="onEnter($event, i)"
                   (focus)="$any($event.target).select()"
                 />
                 @if (row.get('assignedQty')?.hasError('max')) {
@@ -106,7 +118,11 @@
           } @empty {
             <tr>
               <td colspan="5" class="px-4 py-10 text-center text-gray-400">
-                📦 No products in inventory yet — add items on the Inventory page first.
+                @if (searchQuery()) {
+                  No items match "{{ searchQuery() }}"
+                } @else {
+                  📦 No products in inventory yet — add items on the Inventory page first.
+                }
               </td>
             </tr>
           }

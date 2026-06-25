@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -46,6 +47,24 @@ export class AssignmentPage implements OnInit {
   submitError     = signal('');
   submitSuccess   = signal(false);
   alreadyAssigned = signal(false);
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  searchQuery = signal('');
+  // rowNames is a Signal so computed() can track it when inventory reloads.
+  private rowNames = signal<{ item_name: string; hindi_name: string }[]>([]);
+
+  filteredIndices = computed(() => {
+    const q     = this.searchQuery().toLowerCase().trim();
+    const names = this.rowNames();
+    if (!q) return names.map((_, i) => i);
+    return names
+      .map((n, i) => ({ n, i }))
+      .filter(({ n }) =>
+        n.item_name.toLowerCase().includes(q) ||
+        n.hindi_name.toLowerCase().includes(q)
+      )
+      .map(({ i }) => i);
+  });
 
   // ── Current Load (running balance) ─────────────────────────────────────────
   holdings  = signal<Holding[]>([]);
@@ -96,6 +115,7 @@ export class AssignmentPage implements OnInit {
   }
 
   private buildRows(items: InventoryItem[]): void {
+    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '' })));
     this.rows.clear();
     for (const item of items) {
       // Floor to whole sheets: retail sales can leave fractional stock; assignment is always whole sheets.
