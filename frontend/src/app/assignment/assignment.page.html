@@ -155,11 +155,9 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
-              <th class="px-4 py-3 text-right font-semibold text-gray-600">Assigned</th>
-              <th class="px-4 py-3 text-right font-semibold text-gray-600">Sold</th>
+              <th class="px-4 py-3 text-left font-semibold text-gray-600">Item</th>
               <th class="px-4 py-3 text-right font-semibold text-gray-600">Balance</th>
-              <th class="px-4 py-3 text-center font-semibold text-gray-600 w-64">Return</th>
+              <th class="px-4 py-3 text-center font-semibold text-gray-600 w-56">Return Qty</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 bg-white">
@@ -170,38 +168,40 @@
                   @if (h.hindi_name) {
                     <div class="text-xs text-gray-500">({{ h.item_name }})</div>
                   }
+                  <div class="text-xs text-indigo-600 font-semibold">
+                    ₹{{ h.mrp_per_unit * h.units_per_sheet }}/sheet
+                  </div>
                 </td>
-                <td class="px-4 py-2 text-right text-gray-600">{{ h.assigned | sheetQty:h.units_per_sheet }}</td>
-                <td class="px-4 py-2 text-right text-gray-600">{{ h.sold | sheetQty:h.units_per_sheet }}</td>
-                <td class="px-4 py-2 text-right font-semibold text-blue-700">{{ h.withBoy | sheetQty:h.units_per_sheet }}</td>
+                <td class="px-4 py-2 text-right font-semibold text-blue-700 whitespace-nowrap">
+                  {{ h.withBoy | sheetQty:h.units_per_sheet }}
+                </td>
                 <td class="px-4 py-2">
-                  <div class="flex items-center justify-end gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      [max]="h.withBoy"
-                      [value]="getReturnQty(h.item_id)"
-                      (input)="setReturnQty(h.item_id, +$any($event.target).value)"
-                      class="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      placeholder="0"
-                    />
+                  <div class="flex items-center justify-center gap-1">
                     <button
                       type="button"
-                      class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded disabled:opacity-40"
+                      class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-base disabled:opacity-40"
+                      [disabled]="getReturnQty(h.item_id) <= 0"
+                      (click)="decrementReturnQty(h.item_id)"
+                    >−</button>
+                    <span class="w-8 text-center font-semibold text-gray-800">{{ getReturnQty(h.item_id) }}</span>
+                    <button
+                      type="button"
+                      class="w-8 h-8 flex items-center justify-center rounded-full bg-amber-400 hover:bg-amber-500 text-white font-bold text-base disabled:opacity-40"
+                      [disabled]="getReturnQty(h.item_id) >= h.withBoy"
+                      (click)="incrementReturnQty(h.item_id, h.withBoy)"
+                    >+</button>
+                    <button
+                      type="button"
+                      class="ml-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded disabled:opacity-40"
                       [disabled]="getReturnQty(h.item_id) <= 0"
                       (click)="recordReturn(h, getReturnQty(h.item_id))"
                     >Return</button>
-                    <button
-                      type="button"
-                      class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold px-3 py-1.5 rounded"
-                      (click)="returnAll(h)"
-                    >Return all</button>
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="px-4 py-10 text-center text-gray-400">
+                <td colspan="3" class="px-4 py-10 text-center text-gray-400">
                   Nothing currently loaded with this delivery boy.
                 </td>
               </tr>

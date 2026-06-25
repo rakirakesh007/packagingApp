@@ -1,43 +1,33 @@
 import { Router } from 'express';
 import { SaleModel } from '../models/sale.model';
-import { LoadingModel } from '../models/loading.model';
-import { InventoryModel } from '../models/inventory.model';
 import { requireSelfOrAdmin } from '../middleware/auth.middleware';
+import { computeHoldings } from '../utils/holdings.util';
 const router = Router();
 
 router.get('/eod/:delivery_boy_id', requireSelfOrAdmin('delivery_boy_id'), async (req, res) => {
-  const { delivery_boy_id } = req.params;
+  const delivery_boy_id = String(req.params['delivery_boy_id']);
 
   try {
     const now   = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    // Fetch Opening Stock
-    const loading = await LoadingModel.findOne({
-      delivery_boy_id,
-      date: { $gte: start, $lte: end },
-    });
+    // Current running balance (what the boy holds right now)
+    const holdings = await computeHoldings(delivery_boy_id);
+    const holdingsMap = new Map(holdings.map((h) => [h.item_id, h]));
 
-    if (!loading) {
-      return res.status(404).json({
-        success: false,
-        message: 'No loading data found for today.',
-      });
-    }
-
-    const openingStock = loading.items.map((item) => ({
-      item_id:    item.item_id,
-      item_name:  (item as any).item_name  || '',
-      hindi_name: (item as any).hindi_name || '',
-      qty:        item.qty,
-    }));
-
-    // Fetch Sales
+    // Today's sales
     const sales = await SaleModel.find({
       delivery_boy_id,
       timestamp: { $gte: start, $lte: end },
     });
+
+    if (holdings.length === 0 && sales.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No stock loaded or sold today.',
+      });
+    }
 
     const soldItems: Record<string, number> = {};
     let totalCash = 0;
@@ -46,31 +36,29 @@ router.get('/eod/:delivery_boy_id', requireSelfOrAdmin('delivery_boy_id'), async
       totalCash += sale.total_amount;
       sale.items.forEach((item) => {
         const key = item.item_id.toString();
-        if (!soldItems[key]) soldItems[key] = 0;
-        soldItems[key] += (item as any).sheets_sold ?? 0;
+        soldItems[key] = (soldItems[key] || 0) + ((item as any).sheets_sold ?? 0);
       });
     });
 
-    // units_per_sheet per item — frontend renders "X sheets Y pcs".
-    const itemIds = openingStock.map((i) => i.item_id);
-    const invDocs = itemIds.length
-      ? await InventoryModel.find({ _id: { $in: itemIds } }, { units_per_sheet: 1 }).lean()
-      : [];
-    const unitsMap = new Map(invDocs.map((d) => [String(d._id), d.units_per_sheet ?? 1]));
+    // Union of all item_ids from holdings + today's sold
+    const allItemIds = new Set([...holdingsMap.keys(), ...Object.keys(soldItems)]);
 
-    // Calculate Closing Stock
-    const closingStock = openingStock.map((item) => {
-      const key = item.item_id.toString();
+    const closingStock = [...allItemIds].map((id) => {
+      const h         = holdingsMap.get(id);
+      const todaySold = soldItems[id] || 0;
+      const withBoy   = h?.withBoy ?? 0;
+      // Opening = what boy had at START of today = current balance + what was sold today
+      const opening   = withBoy + todaySold;
       return {
-        item_id:         item.item_id,
-        item_name:       (item as any).item_name  || '',
-        hindi_name:      (item as any).hindi_name || '',
-        units_per_sheet: unitsMap.get(key) ?? 1,
-        opening:         item.qty,
-        sold:            soldItems[key] || 0,
-        remaining:       item.qty - (soldItems[key] || 0),
+        item_id:         id,
+        item_name:       h?.item_name  ?? '',
+        hindi_name:      h?.hindi_name ?? '',
+        units_per_sheet: h?.units_per_sheet ?? 1,
+        opening,
+        sold:            todaySold,
+        remaining:       withBoy,
       };
-    });
+    }).filter((r) => r.opening > 0).sort((a, b) => a.item_name.localeCompare(b.item_name));
 
     return res.json({
       success: true,

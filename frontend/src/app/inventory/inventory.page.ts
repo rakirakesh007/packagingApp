@@ -162,6 +162,22 @@ export class InventoryPage implements OnInit {
     });
   }
 
+  duplicateItem(item: InventoryItem): void {
+    this.modalMode.set('add');
+    this.editingItemId.set(null);
+    this.formItemName    = item.item_name;
+    this.formHindiName   = item.hindi_name ?? '';
+    this.formDescription = item.description ?? '';
+    this.formUnitsPerSheet          = item.units_per_sheet ?? 10;
+    this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
+    this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
+    this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
+    this.formStock       = 0;
+    this.formThreshold   = item.low_stock_threshold;
+    this.formIngredients = item.ingredients ?? '';
+    this.showItemModal.set(true);
+  }
+
   deleteItem(item: InventoryItem): void {
     const confirmed = window.confirm('Are you sure you want to delete this item? This action cannot be undone.');
     if (!confirmed) return;

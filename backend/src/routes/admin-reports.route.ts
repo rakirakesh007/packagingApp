@@ -4,6 +4,7 @@ import { LoadingModel } from '../models/loading.model';
 import { ExpenseModel } from '../models/expense.model';
 import { InventoryModel } from '../models/inventory.model';
 import { UserModel } from '../models/user.model';
+import { computeHoldings } from '../utils/holdings.util';
 
 const router = Router();
 
@@ -185,28 +186,35 @@ router.get('/eod', async (_req: Request, res: Response) => {
 
     const summary = await Promise.all(
       loadings.map(async (loading) => {
-        const openingStock = loading.items.reduce((sum, i) => sum + i.qty, 0);
+        const boyId = String(loading.delivery_boy_id);
+
+        // True running balance (carryover + today's new loading − all sales − returns)
+        const holdings = await computeHoldings(boyId);
+        const withBoyTotal = holdings.reduce((sum, h) => sum + h.withBoy, 0);
 
         const sales = await SaleModel.find({
           delivery_boy_id: loading.delivery_boy_id,
           timestamp: { $gte: start, $lte: end },
         });
 
-        // Cross-item sheet total; delivery-boy sales are wholesale (whole) in
-        // practice — round to kill float dust.
-        const sold = Math.round(sales.reduce(
+        const todaySold = sales.reduce(
           (sum, s) => sum + s.items.reduce((si, i) => si + ((i as any).sheets_sold ?? 0), 0),
           0
-        ));
+        );
         const cashCollected = sales.reduce((sum, s) => sum + s.total_amount, 0);
-        const user = userMap.get(String(loading.delivery_boy_id));
+        const user = userMap.get(boyId);
+
+        // Opening = what boy had at START of today = current balance + what was sold today
+        const openingStock = Math.round((withBoyTotal + todaySold) * 1000) / 1000;
+        const sold         = Math.round(todaySold * 1000) / 1000;
+        const remaining    = Math.round(withBoyTotal * 1000) / 1000;
 
         return {
           delivery_boy_id:   loading.delivery_boy_id,
-          delivery_boy_name: user?.name || user?.username || String(loading.delivery_boy_id),
+          delivery_boy_name: user?.name || user?.username || boyId,
           openingStock,
           sold,
-          remaining: openingStock - sold,
+          remaining,
           cashCollected,
         };
       })

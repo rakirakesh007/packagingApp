@@ -98,8 +98,8 @@ export class AssignmentPage implements OnInit {
   private buildRows(items: InventoryItem[]): void {
     this.rows.clear();
     for (const item of items) {
-      // Available = total_stock − reserved (what's free to load; reserved is already out with boys).
-      const available = Math.max(0, item.total_stock - (item.reserved_stock ?? 0));
+      // Floor to whole sheets: retail sales can leave fractional stock; assignment is always whole sheets.
+      const available = Math.floor(Math.max(0, item.total_stock - (item.reserved_stock ?? 0)));
       this.rows.push(this.fb.group({
         item_id:         [item.id],
         item_name:       [item.item_name],
@@ -142,6 +142,16 @@ export class AssignmentPage implements OnInit {
       next.set(itemId, Math.max(0, qty));
       return next;
     });
+  }
+
+  incrementReturnQty(itemId: string, max: number): void {
+    const cur = this.getReturnQty(itemId);
+    if (cur < max) this.setReturnQty(itemId, cur + 1);
+  }
+
+  decrementReturnQty(itemId: string): void {
+    const cur = this.getReturnQty(itemId);
+    if (cur > 0) this.setReturnQty(itemId, cur - 1);
   }
 
   recordReturn(h: Holding, qty: number): void {

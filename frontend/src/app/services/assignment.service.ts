@@ -16,6 +16,7 @@ export interface Holding {
   item_name: string;
   hindi_name: string;
   units_per_sheet: number;
+  mrp_per_unit: number;
   assigned: number;
   sold: number;
   returned: number;

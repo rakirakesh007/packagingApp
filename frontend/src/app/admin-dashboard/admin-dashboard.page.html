@@ -71,7 +71,7 @@
         <div class="boy-row">
           <div>
             <p class="boy-name">{{ row.delivery_boy_name }}</p>
-            <p class="boy-sub">{{ row.sold }} / {{ row.openingStock }} sheets sold</p>
+            <p class="boy-sub">Sold {{ row.sold }} sheets &middot; {{ row.remaining }} remaining</p>
           </div>
           <span class="boy-cash">&#x20B9;{{ row.cashCollected | number:'1.0-0' }}</span>
         </div>
