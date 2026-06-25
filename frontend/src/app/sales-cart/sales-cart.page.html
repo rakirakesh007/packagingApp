@@ -44,7 +44,7 @@
           @if (item.hindi_name) {
             <span class="text-xs text-gray-500">({{ item.item_name }})</span>
           }
-          <span class="item-price">₹{{ sheetPrice(item) }}/sheet</span>
+          <span class="item-price">₹{{ sheetPrice(item) }}/sheet &middot; {{ item.total_stock }} sheets</span>
           @if (item.total_stock <= item.low_stock_threshold) {
             <span class="low-stock-badge">Low Stock</span>
           }

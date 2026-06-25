@@ -112,6 +112,7 @@ router.get('/item-sales', async (req: Request, res: Response) => {
 
 /**
  * GET /admin/reports/eod-by-product — today stock grouped by item.
+ * Opening = withBoy_current (across all boys) + today_sold (same correct formula as per-boy EOD).
  */
 router.get('/eod-by-product', async (_req: Request, res: Response) => {
   try {
@@ -124,16 +125,7 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
       LoadingModel.find({ date: { $gte: start, $lte: end } }),
     ]);
 
-    const openingMap = new Map<string, { item_id: string; item_name: string; hindi_name: string; opening: number }>();
-    loadings.forEach(loading => {
-      loading.items.forEach(item => {
-        const key = String(item.item_id);
-        const cur = openingMap.get(key) ?? { item_id: key, item_name: (item as any).item_name || '', hindi_name: (item as any).hindi_name || '', opening: 0 };
-        cur.opening += item.qty;
-        openingMap.set(key, cur);
-      });
-    });
-
+    // Today's sold per item (across all boys)
     const soldMap = new Map<string, number>();
     const soldNames = new Map<string, { item_name: string; hindi_name: string }>();
     sales.forEach(sale => {
@@ -146,21 +138,44 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
       });
     });
 
-    // Include sold-only items (retail sales of stock not in today's loadings).
-    soldMap.forEach((_v, key) => {
-      if (!openingMap.has(key)) {
-        const names = soldNames.get(key) ?? { item_name: '', hindi_name: '' };
-        openingMap.set(key, { item_id: key, item_name: names.item_name, hindi_name: names.hindi_name, opening: 0 });
-      }
-    });
+    // All active boy IDs from today's loadings + today's sales
+    const allBoyIds = new Set<string>([
+      ...loadings.map(l => String(l.delivery_boy_id)),
+      ...sales.map(s => String(s.delivery_boy_id)),
+    ]);
 
-    const unitsMap = await buildUnitsPerSheetMap([...openingMap.keys()]);
-    const result = [...openingMap.values()].map(item => ({
-      ...item,
-      units_per_sheet: unitsMap.get(item.item_id) ?? 1,
-      sold:      soldMap.get(item.item_id) ?? 0,
-      remaining: item.opening - (soldMap.get(item.item_id) ?? 0),
-    })).sort((a, b) => b.sold - a.sold);
+    // Aggregate withBoy per item across all boys
+    const globalWithBoy = new Map<string, { withBoy: number; item_name: string; hindi_name: string; units_per_sheet: number }>();
+    await Promise.all([...allBoyIds].map(async (boyId) => {
+      const holdings = await computeHoldings(boyId);
+      for (const h of holdings) {
+        const cur = globalWithBoy.get(h.item_id) ?? { withBoy: 0, item_name: h.item_name, hindi_name: h.hindi_name, units_per_sheet: h.units_per_sheet };
+        cur.withBoy += h.withBoy;
+        if (!cur.item_name)  cur.item_name  = h.item_name;
+        if (!cur.hindi_name) cur.hindi_name = h.hindi_name;
+        globalWithBoy.set(h.item_id, cur);
+      }
+    }));
+
+    // Union of items from globalWithBoy + sold today
+    const allItemIds = new Set([...globalWithBoy.keys(), ...soldMap.keys()]);
+    const unitsMap   = await buildUnitsPerSheetMap([...allItemIds]);
+
+    const result = [...allItemIds].map(id => {
+      const h = globalWithBoy.get(id);
+      const todaySold = soldMap.get(id) ?? 0;
+      const withBoy   = h?.withBoy ?? 0;
+      const names     = soldNames.get(id) ?? { item_name: '', hindi_name: '' };
+      return {
+        item_id:         id,
+        item_name:       h?.item_name  || names.item_name,
+        hindi_name:      h?.hindi_name || names.hindi_name,
+        units_per_sheet: h?.units_per_sheet ?? unitsMap.get(id) ?? 1,
+        opening:         withBoy + todaySold,
+        sold:            todaySold,
+        remaining:       withBoy,
+      };
+    }).filter(r => r.opening > 0 || r.sold > 0).sort((a, b) => b.sold - a.sold);
 
     return res.json(result);
   } catch (error) {
