@@ -1,0 +1,186 @@
+<div class="store">
+
+  <!-- Header -->
+  <header class="store-header">
+    <div class="brand-row">
+      <h1 class="brand">🌶️ {{ t('brand') }}</h1>
+      <button class="lang-toggle" (click)="toggleLang()" type="button">
+        {{ lang() === 'en' ? 'हिंदी' : 'EN' }}
+      </button>
+    </div>
+    <p class="tagline">{{ t('tagline') }}</p>
+    <input
+      type="search"
+      class="search-input"
+      [placeholder]="t('search')"
+      [ngModel]="searchQuery()"
+      (ngModelChange)="searchQuery.set($event)"
+      autocomplete="off"
+    />
+  </header>
+
+  <!-- Trust badges (horizontal scroll strip) -->
+  <div class="badges">
+    <div class="badge">
+      <span class="badge-icon">🏡</span>
+      <span class="badge-label">{{ t('badgeBiharTitle') }}</span>
+    </div>
+    <div class="badge">
+      <span class="badge-icon">🌾</span>
+      <span class="badge-label">{{ t('badgeFarmTitle') }}</span>
+    </div>
+    <div class="badge">
+      <span class="badge-icon">💵</span>
+      <span class="badge-label">{{ t('badgeCODTitle') }}</span>
+    </div>
+    <div class="badge">
+      <span class="badge-icon">🧴</span>
+      <span class="badge-label">{{ t('badgeHygTitle') }}</span>
+    </div>
+    <div class="badge">
+      <span class="badge-icon">✅</span>
+      <span class="badge-label">{{ t('badgeQualTitle') }}</span>
+    </div>
+    <div class="badge">
+      <span class="badge-icon">🚚</span>
+      <span class="badge-label">{{ t('badgeFreeTitle') }}</span>
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="items">
+    @for (item of filteredItems(); track item.id) {
+      <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
+        <div class="item-info">
+          <span class="item-name">
+            {{ displayName(item) }}
+            @if (variant(item)) {
+              <span class="variant-badge">{{ variant(item) }}</span>
+            }
+          </span>
+          @if (subName(item)) {
+            <span class="item-sub">({{ subName(item) }})</span>
+          }
+          <span class="item-price">₹{{ item.price_per_sheet }}{{ t('perSheet') }}</span>
+          <!-- <span class="item-stock">{{ item.sheets_available }} {{ t('sheets') }} {{ t('available') }}</span> -->
+        </div>
+        <div class="item-controls">
+          @if (getQty(item.id) > 0) {
+            <button class="btn-minus" (click)="decrement(item)" type="button" aria-label="−">−</button>
+            <span class="qty">{{ getQty(item.id) }}</span>
+          }
+          <button
+            class="btn-plus"
+            (click)="increment(item)"
+            type="button"
+            [disabled]="getQty(item.id) >= item.sheets_available"
+            aria-label="+"
+          >+</button>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty">{{ t('noItems') }}</div>
+    }
+  </div>
+
+  <!-- Sticky cart bar -->
+  @if (cartCount() > 0 && !orderPlaced()) {
+    <div class="cart-bar">
+      <div class="cart-bar-info">
+        <span class="cart-bar-count">{{ cartCount() }} {{ t('items') }}</span>
+        <span class="cart-bar-total">₹{{ cartTotal() }}</span>
+        @if (qualifiesFreeDelivery()) {
+          <span class="free-hint ok">{{ t('qualifiesFree') }}</span>
+        } @else {
+          <span class="free-hint">{{ t('addMoreFree').replace('{x}', '' + freeDeliveryRemaining()) }}</span>
+        }
+      </div>
+      <button class="btn-checkout" (click)="openCheckout()" type="button">{{ t('checkout') }} →</button>
+    </div>
+  }
+
+  <!-- Checkout sheet -->
+  @if (showCheckout()) {
+    <div class="overlay" (click)="closeCheckout()"></div>
+    <div class="checkout-sheet">
+      <div class="sheet-handle"></div>
+      <h2 class="sheet-title">{{ t('orderDetails') }}</h2>
+
+      <!-- Order review -->
+      <div class="review">
+        @for (l of cartLines(); track l.item.id) {
+          <div class="review-line">
+            <span>
+              {{ l.sheets }} × {{ displayName(l.item) }}
+              @if (variant(l.item)) {
+                <span class="review-variant">{{ variant(l.item) }}</span>
+              }
+            </span>
+            <span>₹{{ l.sheets * l.item.price_per_sheet }}</span>
+          </div>
+        }
+        <div class="review-sub">
+          <span>{{ t('subtotal') }}</span>
+          <span>₹{{ cartTotal() }}</span>
+        </div>
+        <div class="review-sub">
+          <span>{{ t('delivery') }}</span>
+          @if (deliveryFee() === 0) {
+            <span class="free-text">{{ t('deliveryFree') }}</span>
+          } @else {
+            <span>₹{{ deliveryFee() }}</span>
+          }
+        </div>
+        <div class="review-total">
+          <strong>{{ t('total') }}</strong>
+          <strong>₹{{ grandTotal() }}</strong>
+        </div>
+      </div>
+
+      <!-- Customer details -->
+      <label class="field">
+        <span>{{ t('name') }}</span>
+        <input type="text" [placeholder]="t('namePh')" [ngModel]="custName()" (ngModelChange)="custName.set($event)" />
+      </label>
+      <label class="field">
+        <span>{{ t('phone') }}</span>
+        <input type="tel" maxlength="10" [placeholder]="t('phonePh')" [ngModel]="custPhone()" (ngModelChange)="custPhone.set($event)" />
+      </label>
+      <label class="field">
+        <span>{{ t('address') }}</span>
+        <button class="btn-location" type="button" (click)="useCurrentLocation()" [disabled]="detectingLocation()">
+          {{ detectingLocation() ? t('locating') : t('useLocation') }}
+        </button>
+        <textarea rows="3" [placeholder]="t('addressPh')" [ngModel]="custAddress()" (ngModelChange)="custAddress.set($event)"></textarea>
+      </label>
+
+      @if (formError()) {
+        <p class="form-error">{{ formError() }}</p>
+      }
+
+      <button class="btn-place" (click)="placeOrder()" [disabled]="submitting()" type="button">
+        📲 {{ t('placeOrder') }} · ₹{{ grandTotal() }}
+      </button>
+    </div>
+  }
+
+  <!-- Order placed confirmation -->
+  @if (orderPlaced()) {
+    <div class="success-screen">
+      <div class="success-card">
+        <div class="success-icon">✅</div>
+        <h2 class="success-title">{{ t('orderPlaced') }}</h2>
+        <p class="success-text">{{ t('orderThanks') }}</p>
+        <p class="success-hint">{{ t('orderCancelHint') }}</p>
+
+        <button class="btn-whatsapp" (click)="sendWhatsapp()" type="button">
+          📲 {{ t('sendWhatsapp') }}
+        </button>
+        <p class="whatsapp-hint">{{ t('sendWhatsappHint') }}</p>
+
+        <button class="btn-new-order" (click)="startNewOrder()" type="button">{{ t('newOrder') }}</button>
+      </div>
+    </div>
+  }
+
+</div>

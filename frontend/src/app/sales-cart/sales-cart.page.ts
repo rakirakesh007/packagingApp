@@ -15,7 +15,6 @@ import { ToastService } from '../services/toast.service';
 import { AuthService } from '../auth/auth.service';
 import { InventoryService } from '../services/inventory.service';
 import { InventoryItem } from '../models/inventory.model';
-import { environment } from '../../environments/environment';
 import { forkJoin } from 'rxjs';
 
 export interface CartItem {
@@ -50,8 +49,6 @@ export class SalesCartPage implements OnInit {
   shopMobile   = signal('');
   paymentMode  = signal<'cash' | 'online'>('cash');
   orderSuccess = signal(false);
-  /** URL to send WhatsApp bill to the customer — set after order, cleared on next order. */
-  customerWhatsAppUrl = signal<string | null>(null);
   /** Guards against double-tapping Place Order while the sale request is in flight. */
   submitting   = signal(false);
   noAssignment = signal(false);   // true when no stock currently held by this boy
@@ -248,77 +245,41 @@ export class SalesCartPage implements OnInit {
 
   private openWhatsApp(): void {
     const mobile = this.shopMobile().trim();
-    const date   = new Date().toLocaleDateString('en-IN');
-    const mode   = this.paymentMode() === 'cash' ? 'Cash' : 'Online';
+    if (!mobile) return;
+
+    const date = new Date().toLocaleDateString('en-IN');
+    const mode = this.paymentMode() === 'cash' ? 'Cash' : 'Online';
 
     const lines = this.cartItemsList()
-      .map((ci) => {
-        const name       = ci.item.hindi_name || ci.item.item_name;
-        const english    = ci.item.hindi_name ? ` (${ci.item.item_name})` : '';
-        const finalPrice = Math.max(0, ci.selling_price_per_sheet) * ci.sheets_sold;
-        return `${ci.sheets_sold} sheets ${name}${english} @ ₹${ci.selling_price_per_sheet}/sheet = ₹${finalPrice}`;
+      .map((ci, i) => {
+        const hindi   = ci.item.hindi_name || ci.item.item_name;
+        const english = ci.item.hindi_name ? ` (${ci.item.item_name})` : '';
+        const total   = Math.max(0, ci.selling_price_per_sheet) * ci.sheets_sold;
+        return `${i + 1}. ${hindi}${english}\n   ${ci.sheets_sold} sheet × ₹${ci.selling_price_per_sheet} = ₹${total}`;
       })
       .join('\n');
 
-    // Build customer bill URL (tap button shown in UI — direct user gesture avoids popup blocker)
-    if (mobile) {
-      const catalog = this.generateCatalog(this.catalogItems());
-      const shopMsg = [
-        `नमस्ते ${this.shopName() || 'ग्राहक'}, आपका ऑर्डर:`,
-        `Date: ${date}`,
-        lines,
-        `Total: ₹${this.cartTotal()}`,
-        `Payment: ${mode}`,
-        `To order again, contact Rakesh: wa.me/${environment.ownerWhatsapp}`,
-        ...(catalog ? ['', catalog] : []),
-      ].join('\n');
-      this.customerWhatsAppUrl.set(`https://wa.me/91${mobile}?text=${encodeURIComponent(shopMsg)}`);
-    } else {
-      this.customerWhatsAppUrl.set(null);
-    }
+    const storeLink = `${window.location.origin}/customer`;
 
-    // Notify owner automatically (single window.open — no popup blocker conflict)
-    const boyName  = this.auth.userName() ?? 'Delivery Boy';
-    const ownerMsg = [
-      `🚚 Sale — ${boyName}`,
-      `Shop: ${this.shopName() || '—'} | Date: ${date}`,
+    const msg = [
+      `नमस्ते ${this.shopName() || 'ग्राहक'} 🙏`,
+      '',
+      `*आपका बिल — DesiMasalaHub*`,
+      `📅 ${date}`,
+      '',
       lines,
-      `Total: ₹${this.cartTotal()} | Payment: ${mode}`,
-    ].join('\n');
-    window.open(`https://wa.me/${environment.ownerWhatsapp}?text=${encodeURIComponent(ownerMsg)}`, '_blank');
-  }
-
-  sendCustomerWhatsApp(): void {
-    const url = this.customerWhatsAppUrl();
-    if (url) window.open(url, '_blank');
-  }
-
-  /**
-   * Generates a digital catalog section for WhatsApp using the provided inventory.
-   * Only items with total_stock >= 5 are included.
-   */
-  private generateCatalog(items: InventoryItem[]): string {
-    const eligible = items.filter((item) => (item.total_stock ?? 0) >= 5);
-    if (eligible.length === 0) return '';
-
-    const rows = eligible
-      .map((item, i) => {
-        const name  = item.hindi_name ? `${item.hindi_name} (${item.item_name})` : item.item_name;
-        const price = `₹${this.sheetPrice(item)}/sheet`;
-        return `${i + 1}. ${name} — ${price}`;
-      })
-      .join('\n');
-
-    return [
+      '',
+      `*कुल (Total): ₹${this.cartTotal()}*`,
+      `💳 भुगतान: ${mode}`,
+      '',
       '──────────────────',
-      '🌶️ *DesiMasalaHub — डिजिटल कैटलॉग*',
-      rows,
+      '📦 अगली बार ऑनलाइन ऑर्डर करें:',
+      storeLink,
       '──────────────────',
-      '📦 ताज़ा और शुद्ध मसाले — सीधे आपके दरवाज़े तक।',
-      '💬 अपना ऑर्डर देने के लिए कृपया यहाँ लिखें:',
-      '1. मसालों की सूची (नाम और मात्रा)',
-      '2. अपना पूरा पता (Address)',
+      'धन्यवाद! 🌶️ DesiMasalaHub',
     ].join('\n');
+
+    window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
   private resetCart(): void {
@@ -327,6 +288,5 @@ export class SalesCartPage implements OnInit {
     this.shopMobile.set('');
     this.paymentMode.set('cash');
     this.showCheckout.set(false);
-    // customerWhatsAppUrl kept intentionally until next order so user can still tap Send Bill
   }
 }

@@ -18,10 +18,7 @@
   <!-- Success Toast -->
   @if (orderSuccess()) {
     <div class="toast-success" role="status">
-      ✅ Order placed!
-      @if (customerWhatsAppUrl()) {
-        <button class="btn-send-bill" (click)="sendCustomerWhatsApp()">📲 Send Bill to Customer</button>
-      }
+      ✅ Order placed! Bill sent to customer on WhatsApp.
     </div>
   }
 
@@ -155,7 +152,7 @@
       </div>
 
       <button class="btn-place-order" (click)="placeOrder()" [disabled]="submitting()">
-        {{ submitting() ? 'Recording sale…' : 'Place Order & Send WhatsApp Bill' }}
+        {{ submitting() ? 'Recording sale…' : 'Place Order & Send Bill' }}
       </button>
     </div>
   }

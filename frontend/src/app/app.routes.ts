@@ -9,6 +9,12 @@ export const routes: Routes = [
       import('./auth/login.component').then((m) => m.LoginComponent),
   },
   {
+    // Public customer storefront — no auth, shareable link.
+    path: 'customer',
+    loadComponent: () =>
+      import('./customer-store/customer-store.page').then((m) => m.CustomerStorePage),
+  },
+  {
     path: 'label-sheet',
     loadComponent: () =>
       import('./label-sheet/label-sheet.component').then((m) => m.LabelSheetComponent),

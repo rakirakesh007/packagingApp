@@ -40,6 +40,7 @@ import expensesRoute from './routes/expenses.route';
 import reportsRoute from './routes/reports.route';
 import usersRoute from './routes/users.route';
 import shopsRoute from './routes/shops.route';
+import publicRoute from './routes/public.route';
 import { requireAuth, requireAdmin, assertJwtSecretConfigured } from './middleware/auth.middleware';
 
 assertJwtSecretConfigured();
@@ -53,10 +54,11 @@ const loginLimiter = rateLimit({
   message: { message: 'Too many login attempts. Try again in 15 minutes.' },
 });
 
-// /auth/login stays public (rate-limited); everything else requires a valid JWT.
+// /auth/login and /public/* stay public; everything else requires a valid JWT.
 // Admin-only resources additionally require the admin role; finer-grained
 // admin checks (e.g. inventory mutations) live inside the route files.
 app.use('/auth', loginLimiter, authRoute);
+app.use('/public', publicRoute); // customer storefront: catalog + order (no auth)
 app.use('/inventory', requireAuth, inventoryRoute);
 app.use('/sale', requireAuth, saleRoute);
 app.use('/assignment', requireAuth, assignmentRoute);
