@@ -115,7 +115,6 @@ export class AssignmentPage implements OnInit {
   }
 
   private buildRows(items: InventoryItem[]): void {
-    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '' })));
     this.rows.clear();
     for (const item of items) {
       // Floor to whole sheets: retail sales can leave fractional stock; assignment is always whole sheets.
@@ -131,6 +130,8 @@ export class AssignmentPage implements OnInit {
         assignedQty: [0, [Validators.min(0), Validators.max(available)]],
       }));
     }
+    // Set rowNames after FormArray is fully populated so filteredIndices is always in sync.
+    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '' })));
     this.recalcTotals();
   }
 

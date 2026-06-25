@@ -81,36 +81,35 @@
 
         <tbody formArrayName="rows" class="divide-y divide-gray-100 bg-white">
           @for (i of filteredIndices(); track i) {
-            @let row = rows.at(i);
             <tr
               [formGroupName]="i"
               class="hover:bg-blue-50 transition-colors"
-              [class.bg-blue-50]="row.get('assignedQty')?.value > 0"
+              [class.bg-blue-50]="rows.at(i).get('assignedQty')?.value > 0"
             >
               <td class="px-4 py-2 text-gray-400 text-xs">{{ i + 1 }}</td>
               <td class="px-4 py-2 font-medium text-gray-800">
-                <div>{{ row.get('hindi_name')?.value || row.get('item_name')?.value }}</div>
-                @if (row.get('hindi_name')?.value) {
-                  <div class="text-xs text-gray-500">({{ row.get('item_name')?.value }})</div>
+                <div>{{ rows.at(i).get('hindi_name')?.value || rows.at(i).get('item_name')?.value }}</div>
+                @if (rows.at(i).get('hindi_name')?.value) {
+                  <div class="text-xs text-gray-500">({{ rows.at(i).get('item_name')?.value }})</div>
                 }
               </td>
-              <td class="px-4 py-2 text-right text-gray-600">{{ row.get('warehouse_stock')?.value }}</td>
-              <td class="px-4 py-2 text-right text-gray-600">₹{{ (row.get('wholesale_price_per_sheet')?.value * row.get('units_per_sheet')?.value) | number:'1.0-0' }}/sheet</td>
+              <td class="px-4 py-2 text-right text-gray-600">{{ rows.at(i).get('warehouse_stock')?.value }}</td>
+              <td class="px-4 py-2 text-right text-gray-600">₹{{ (rows.at(i).get('wholesale_price_per_sheet')?.value * rows.at(i).get('units_per_sheet')?.value) | number:'1.0-0' }}/sheet</td>
               <td class="px-4 py-2 text-right">
                 <input
                   type="number"
                   formControlName="assignedQty"
                   class="qty-input w-24 rounded border px-2 py-1 text-right text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  [class.border-red-400]="row.get('assignedQty')?.invalid && row.get('assignedQty')?.touched"
-                  [class.border-gray-300]="!row.get('assignedQty')?.invalid || !row.get('assignedQty')?.touched"
+                  [class.border-red-400]="rows.at(i).get('assignedQty')?.invalid && rows.at(i).get('assignedQty')?.touched"
+                  [class.border-gray-300]="!rows.at(i).get('assignedQty')?.invalid || !rows.at(i).get('assignedQty')?.touched"
                   min="0"
-                  [max]="row.get('warehouse_stock')?.value"
+                  [max]="rows.at(i).get('warehouse_stock')?.value"
                   (keydown.enter)="onEnter($event, i)"
                   (focus)="$any($event.target).select()"
                 />
-                @if (row.get('assignedQty')?.hasError('max')) {
+                @if (rows.at(i).get('assignedQty')?.hasError('max')) {
                   <div class="text-red-500 text-xs mt-0.5 text-right">
-                    Max {{ row.get('warehouse_stock')?.value }}
+                    Max {{ rows.at(i).get('warehouse_stock')?.value }}
                   </div>
                 }
               </td>
