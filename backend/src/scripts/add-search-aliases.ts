@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import { InventoryModel } from '../models/inventory.model';
 
-const MONGO_URI = process.env['MONGO_URI'] ||
-  'mongodb+srv://rakeshkumarr90_db_user:nk7pdubBeCuGwAJT@cluster0.z2rgw75.mongodb.net/?appName=Cluster0';
+const MONGO_URI = process.env['MONGO_URI'];
+if (!MONGO_URI) throw new Error('MONGO_URI env var required. Run: MONGO_URI=... npx ts-node src/scripts/add-search-aliases.ts');
 
 // item_name → space/comma keywords for romanized + alternate search
 const aliases: Record<string, string> = {
