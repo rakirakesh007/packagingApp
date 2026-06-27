@@ -19,70 +19,79 @@
     />
   </header>
 
-  <!-- Trust badges (horizontal scroll strip) -->
+  <!-- Trust badges (slim horizontal scroll) -->
   <div class="badges">
-    <div class="badge">
-      <span class="badge-icon">🏡</span>
-      <span class="badge-label">{{ t('badgeBiharTitle') }}</span>
-    </div>
-    <div class="badge">
-      <span class="badge-icon">🌾</span>
-      <span class="badge-label">{{ t('badgeFarmTitle') }}</span>
-    </div>
-    <div class="badge">
-      <span class="badge-icon">💵</span>
-      <span class="badge-label">{{ t('badgeCODTitle') }}</span>
-    </div>
-    <div class="badge">
-      <span class="badge-icon">🧴</span>
-      <span class="badge-label">{{ t('badgeHygTitle') }}</span>
-    </div>
-    <div class="badge">
-      <span class="badge-icon">✅</span>
-      <span class="badge-label">{{ t('badgeQualTitle') }}</span>
-    </div>
-    <div class="badge">
-      <span class="badge-icon">🚚</span>
-      <span class="badge-label">{{ t('badgeFreeTitle') }}</span>
-    </div>
+    <div class="badge"><span class="badge-icon">🏡</span><span class="badge-label">{{ t('badgeBiharTitle') }}</span></div>
+    <div class="badge"><span class="badge-icon">🌾</span><span class="badge-label">{{ t('badgeFarmTitle') }}</span></div>
+    <div class="badge"><span class="badge-icon">💵</span><span class="badge-label">{{ t('badgeCODTitle') }}</span></div>
+    <div class="badge"><span class="badge-icon">🧴</span><span class="badge-label">{{ t('badgeHygTitle') }}</span></div>
+    <div class="badge"><span class="badge-icon">✅</span><span class="badge-label">{{ t('badgeQualTitle') }}</span></div>
+    <div class="badge"><span class="badge-icon">🚚</span><span class="badge-label">{{ t('badgeFreeTitle') }}</span></div>
   </div>
 
-  <!-- Items grouped by category -->
-  <div class="items">
-    @if (groupedItems().length === 0) {
-      <div class="empty">{{ t('noItems') }}</div>
-    }
-    @for (group of groupedItems(); track group.category) {
-      <h3 class="cat-header">{{ group.label }}</h3>
-      @for (item of group.items; track item.id) {
-        <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
-          <div class="item-info">
-            <span class="item-name">
-              {{ displayName(item) }}
-              @if (variant(item)) {
-                <span class="variant-badge">{{ variant(item) }}</span>
-              }
-            </span>
-            @if (subName(item)) {
-              <span class="item-sub">({{ subName(item) }})</span>
-            }
-            <span class="item-price">₹{{ item.price_per_sheet }}{{ t('perSheet') }}</span>
-          </div>
-          <div class="item-controls">
-            @if (getQty(item.id) > 0) {
-              <button class="btn-minus" (click)="decrement(item)" type="button" aria-label="−">−</button>
-              <span class="qty">{{ getQty(item.id) }}</span>
-            }
-            <button
-              class="btn-plus"
-              (click)="increment(item)"
-              type="button"
-              [disabled]="getQty(item.id) >= item.sheets_available"
-              aria-label="+"
-            >+</button>
-          </div>
-        </div>
+  <!-- Category cards (2 × 2 grid) -->
+  @if (!isSearching()) {
+    <div class="cat-grid">
+      @for (def of catDefs; track def.name) {
+        <button
+          class="cat-card"
+          [class.active]="selectedCategory() === def.name"
+          (click)="selectCategory(def.name)"
+          type="button"
+        >
+          <span class="cat-emoji">{{ def.emoji }}</span>
+          <span class="cat-name">{{ lang() === 'hi' ? def.hindi : def.name }}</span>
+          <span class="cat-hindi">{{ lang() === 'hi' ? def.name : def.hindi }}</span>
+          <span class="cat-count">{{ countFor(def.name) }} {{ t('items') }}</span>
+        </button>
       }
+    </div>
+  }
+
+  <!-- Section heading -->
+  <div class="section-heading">
+    @if (isSearching()) {
+      <span class="section-label">🔍 {{ t('search') }}</span>
+    } @else {
+      <span class="section-label">
+        {{ selectedCategoryDef()?.emoji }} {{ lang() === 'hi' ? selectedCategoryDef()?.hindi : selectedCategoryDef()?.name }}
+      </span>
+    }
+    <span class="section-count">{{ activeItems().length }} {{ t('items') }}</span>
+  </div>
+
+  <!-- Items -->
+  <div class="items">
+    @for (item of activeItems(); track item.id) {
+      <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
+        <div class="item-info">
+          <span class="item-name">
+            {{ displayName(item) }}
+            @if (variant(item)) {
+              <span class="variant-badge">{{ variant(item) }}</span>
+            }
+          </span>
+          @if (subName(item)) {
+            <span class="item-sub">({{ subName(item) }})</span>
+          }
+          <span class="item-price">₹{{ item.price_per_sheet }}<span class="item-per">{{ t('perSheet') }}</span></span>
+        </div>
+        <div class="item-controls">
+          @if (getQty(item.id) > 0) {
+            <button class="btn-minus" (click)="decrement(item)" type="button" aria-label="−">−</button>
+            <span class="qty">{{ getQty(item.id) }}</span>
+          }
+          <button
+            class="btn-plus"
+            (click)="increment(item)"
+            type="button"
+            [disabled]="getQty(item.id) >= item.sheets_available"
+            aria-label="+"
+          >+</button>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty">{{ t('noItems') }}</div>
     }
   </div>
 
@@ -175,12 +184,10 @@
         <h2 class="success-title">{{ t('orderPlaced') }}</h2>
         <p class="success-text">{{ t('orderThanks') }}</p>
         <p class="success-hint">{{ t('orderCancelHint') }}</p>
-
         <button class="btn-whatsapp" (click)="sendWhatsapp()" type="button">
           📲 {{ t('sendWhatsapp') }}
         </button>
         <p class="whatsapp-hint">{{ t('sendWhatsappHint') }}</p>
-
         <button class="btn-new-order" (click)="startNewOrder()" type="button">{{ t('newOrder') }}</button>
       </div>
     </div>

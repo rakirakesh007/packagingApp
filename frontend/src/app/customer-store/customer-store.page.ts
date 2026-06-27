@@ -81,47 +81,52 @@ export class CustomerStorePage implements OnInit {
     return item.mrp_per_unit ? `₹${item.mrp_per_unit} ${this.t('pack')}` : '';
   }
 
-  // ── Computed ─────────────────────────────────────────────────────────────
-  private static readonly CAT_ORDER = CATEGORIES.map((c) => c.name);
-  private static readonly CAT_KEY: Record<string, string> = {
-    'Powder Spices':     'catPowderSpices',
-    'Whole Spices':      'catWholeSpices',
-    'Mix Masala Whole':  'catMixWhole',
-    'Mix Masala Powder': 'catMixPowder',
-  };
+  // ── Category tabs ─────────────────────────────────────────────────────────
+  readonly catDefs = [
+    { name: 'Powder Spices',     hindi: 'पाउडर मसाले',        emoji: '🌶️' },
+    { name: 'Whole Spices',      hindi: 'साबुत मसाले',         emoji: '🌿' },
+    { name: 'Mix Masala Whole',  hindi: 'मिक्स मसाला (साबुत)', emoji: '🫙' },
+    { name: 'Mix Masala Powder', hindi: 'मिक्स मसाला (पाउडर)', emoji: '✨' },
+  ];
 
-  groupedItems = computed(() => {
+  selectedCategory = signal('Powder Spices');
+
+  selectCategory(name: string): void {
+    this.selectedCategory.set(name);
+    this.searchQuery.set('');
+  }
+
+  isSearching = computed(() => this.searchQuery().trim().length > 0);
+
+  categoryCount = computed(() => {
+    const map = new Map<string, number>();
+    for (const item of this.catalog()) {
+      const cat = item.category || '';
+      map.set(cat, (map.get(cat) ?? 0) + 1);
+    }
+    return map;
+  });
+
+  countFor(catName: string): number {
+    return this.categoryCount().get(catName) ?? 0;
+  }
+
+  activeItems = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
     const all = this.catalog();
-    const matched = q
-      ? all.filter((i) =>
-          i.item_name.toLowerCase().includes(q) ||
-          (i.hindi_name ?? '').toLowerCase().includes(q) ||
-          (i.search_aliases ?? '').toLowerCase().includes(q)
-        )
-      : all;
-
-    const map = new Map<string, CatalogItem[]>();
-    for (const item of matched) {
-      const cat = item.category || '';
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(item);
+    if (q) {
+      return all.filter((i) =>
+        i.item_name.toLowerCase().includes(q) ||
+        (i.hindi_name ?? '').toLowerCase().includes(q) ||
+        (i.search_aliases ?? '').toLowerCase().includes(q)
+      );
     }
-
-    const result: { category: string; label: string; items: CatalogItem[] }[] = [];
-    for (const cat of CustomerStorePage.CAT_ORDER) {
-      if (map.has(cat)) {
-        const key = CustomerStorePage.CAT_KEY[cat] ?? 'catOther';
-        result.push({ category: cat, label: this.t(key), items: map.get(cat)! });
-        map.delete(cat);
-      }
-    }
-    // Remaining uncategorized
-    for (const [cat, items] of map.entries()) {
-      result.push({ category: cat || 'other', label: cat || this.t('catOther'), items });
-    }
-    return result;
+    return all.filter((i) => i.category === this.selectedCategory());
   });
+
+  selectedCategoryDef = computed(() =>
+    this.catDefs.find((c) => c.name === this.selectedCategory())
+  );
 
   cartCount = computed(() => {
     let n = 0;
