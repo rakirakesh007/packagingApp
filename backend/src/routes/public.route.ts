@@ -15,7 +15,7 @@ router.get('/catalog', async (_req: Request, res: Response) => {
       { total_stock: { $gte: 1 } },
       {
         item_name: 1, hindi_name: 1, units_per_sheet: 1, wholesale_price_per_sheet: 1,
-        total_stock: 1, search_aliases: 1, mrp_per_unit: 1, image_url: 1,
+        total_stock: 1, search_aliases: 1, mrp_per_unit: 1, image_url: 1, category: 1,
       }
     ).sort({ item_name: 1 }).lean();
 
@@ -32,6 +32,7 @@ router.get('/catalog', async (_req: Request, res: Response) => {
         search_aliases:   (d as any).search_aliases ?? '',
         mrp_per_unit:     (d as any).mrp_per_unit ?? 0,
         image_url:        (d as any).image_url ?? null,
+        category:         (d as any).category ?? '',
       };
     });
 

@@ -51,7 +51,7 @@ export class AssignmentPage implements OnInit {
   // ── Search ────────────────────────────────────────────────────────────────
   searchQuery = signal('');
   // rowNames is a Signal so computed() can track it when inventory reloads.
-  private rowNames = signal<{ item_name: string; hindi_name: string }[]>([]);
+  private rowNames = signal<{ item_name: string; hindi_name: string; search_aliases: string }[]>([]);
 
   filteredIndices = computed(() => {
     const q     = this.searchQuery().toLowerCase().trim();
@@ -61,7 +61,8 @@ export class AssignmentPage implements OnInit {
       .map((n, i) => ({ n, i }))
       .filter(({ n }) =>
         n.item_name.toLowerCase().includes(q) ||
-        n.hindi_name.toLowerCase().includes(q)
+        n.hindi_name.toLowerCase().includes(q) ||
+        n.search_aliases.toLowerCase().includes(q)
       )
       .map(({ i }) => i);
   });
@@ -131,7 +132,7 @@ export class AssignmentPage implements OnInit {
       }));
     }
     // Set rowNames after FormArray is fully populated so filteredIndices is always in sync.
-    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '' })));
+    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '', search_aliases: i.search_aliases ?? '' })));
     this.recalcTotals();
   }
 

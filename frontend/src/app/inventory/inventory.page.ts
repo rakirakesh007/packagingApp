@@ -15,6 +15,8 @@ import { AuthService } from '../auth/auth.service';
 import { ToastService } from '../services/toast.service';
 import { InventoryItem } from '../models/inventory.model';
 import { SheetQtyPipe } from '../core/sheet-qty.pipe';
+import { CategoryService, Category } from '../services/category.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-inventory',
@@ -26,6 +28,7 @@ import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 })
 export class InventoryPage implements OnInit {
   private inventoryService = inject(InventoryService);
+  private categoryService  = inject(CategoryService);
   private loading = inject(GlobalLoadingService);
   private auth = inject(AuthService);
   private toast = inject(ToastService);
@@ -37,7 +40,8 @@ export class InventoryPage implements OnInit {
     manufacturer: 'Desimasalahub, Jamalpur',
   };
 
-  items = signal<InventoryItem[]>([]);
+  items      = signal<InventoryItem[]>([]);
+  categories = signal<Category[]>([]);
   searchQuery = signal('');
   isAdmin = computed(() => this.auth.userRole() === 'admin');
 
@@ -78,11 +82,23 @@ export class InventoryPage implements OnInit {
   formWholesalePricePerSheet = 0;
   formStock = 0;
   formThreshold = 5;
-  formIngredients = '';
+  formIngredients   = '';
   formSearchAliases = '';
+  formCategory      = '';
 
   ngOnInit(): void {
-    this.fetchItems();
+    this.loading.show();
+    forkJoin({
+      items:      this.inventoryService.getItems(),
+      categories: this.categoryService.getAll(),
+    }).subscribe({
+      next: ({ items, categories }) => {
+        this.items.set(items);
+        this.categories.set(categories);
+      },
+      error:    (err) => { console.error('Failed to load:', err); this.loading.hide(); },
+      complete: ()    => this.loading.hide(),
+    });
   }
 
   fetchItems(): void {
@@ -115,6 +131,7 @@ export class InventoryPage implements OnInit {
     this.formThreshold   = item.low_stock_threshold;
     this.formIngredients    = item.ingredients ?? '';
     this.formSearchAliases  = item.search_aliases ?? '';
+    this.formCategory       = item.category ?? '';
     this.showItemModal.set(true);
   }
 
@@ -145,6 +162,7 @@ export class InventoryPage implements OnInit {
       low_stock_threshold:        Number(this.formThreshold) || 0,
       ingredients:                this.formIngredients.trim(),
       search_aliases:             this.formSearchAliases.trim(),
+      category:                   this.formCategory,
     };
 
     this.loading.show();
@@ -180,6 +198,7 @@ export class InventoryPage implements OnInit {
     this.formThreshold   = item.low_stock_threshold;
     this.formIngredients   = item.ingredients ?? '';
     this.formSearchAliases = item.search_aliases ?? '';
+    this.formCategory      = item.category ?? '';
     this.showItemModal.set(true);
   }
 
@@ -244,6 +263,7 @@ export class InventoryPage implements OnInit {
     this.formThreshold   = 5;
     this.formIngredients   = '';
     this.formSearchAliases = '';
+    this.formCategory      = '';
   }
 
   addItem(): void {

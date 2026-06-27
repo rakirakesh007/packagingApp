@@ -1,0 +1,65 @@
+<div class="p-4">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">Categories</h1>
+    <p class="text-sm text-gray-500">Manage inventory categories shown in the customer store.</p>
+  </div>
+
+  <!-- Add form -->
+  <div class="bg-white rounded-xl shadow p-5 mb-6 max-w-lg">
+    <h2 class="text-base font-semibold text-gray-800 mb-3">Add Category</h2>
+    <div class="flex flex-col gap-3">
+      <input
+        [(ngModel)]="newName"
+        name="newName"
+        type="text"
+        placeholder="English name (e.g. Powder Spices)"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+      />
+      <input
+        [(ngModel)]="newHindi"
+        name="newHindi"
+        type="text"
+        placeholder="Hindi name (e.g. पाउडर मसाले)"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+      />
+      <button
+        (click)="add()"
+        [disabled]="!newName.trim() || saving()"
+        class="self-start bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white font-bold px-5 py-2 rounded-lg text-sm"
+      >
+        {{ saving() ? 'Adding…' : '+ Add Category' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Category list -->
+  <div class="bg-white rounded-xl shadow overflow-hidden max-w-lg">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr class="text-left">
+          <th class="px-4 py-3 font-semibold text-gray-600">English Name</th>
+          <th class="px-4 py-3 font-semibold text-gray-600">Hindi Name</th>
+          <th class="px-4 py-3 font-semibold text-gray-600 text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (cat of categories(); track cat.id) {
+          <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ cat.name }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ cat.hindi_name || '—' }}</td>
+            <td class="px-4 py-3 text-center">
+              <button
+                (click)="delete(cat)"
+                class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-3 py-1 rounded font-semibold"
+              >🗑️ Delete</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="3" class="px-4 py-8 text-center text-gray-400">No categories yet. Add one above.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

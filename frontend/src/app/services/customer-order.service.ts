@@ -12,6 +12,7 @@ export interface CatalogItem {
   search_aliases: string;
   mrp_per_unit: number;
   image_url: string | null;
+  category: string;
 }
 
 @Injectable({ providedIn: 'root' })

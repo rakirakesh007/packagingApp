@@ -81,15 +81,47 @@ export class CustomerStorePage implements OnInit {
   }
 
   // ── Computed ─────────────────────────────────────────────────────────────
-  filteredItems = computed(() => {
+  private static readonly CAT_ORDER = [
+    'Powder Spices', 'Whole Spices', 'Mix Masala Whole', 'Mix Masala Powder',
+  ];
+  private static readonly CAT_KEY: Record<string, string> = {
+    'Powder Spices':     'catPowderSpices',
+    'Whole Spices':      'catWholeSpices',
+    'Mix Masala Whole':  'catMixWhole',
+    'Mix Masala Powder': 'catMixPowder',
+  };
+
+  groupedItems = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
     const all = this.catalog();
-    if (!q) return all;
-    return all.filter((i) =>
-      i.item_name.toLowerCase().includes(q) ||
-      (i.hindi_name ?? '').toLowerCase().includes(q) ||
-      (i.search_aliases ?? '').toLowerCase().includes(q)
-    );
+    const matched = q
+      ? all.filter((i) =>
+          i.item_name.toLowerCase().includes(q) ||
+          (i.hindi_name ?? '').toLowerCase().includes(q) ||
+          (i.search_aliases ?? '').toLowerCase().includes(q)
+        )
+      : all;
+
+    const map = new Map<string, CatalogItem[]>();
+    for (const item of matched) {
+      const cat = item.category || '';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(item);
+    }
+
+    const result: { category: string; label: string; items: CatalogItem[] }[] = [];
+    for (const cat of CustomerStorePage.CAT_ORDER) {
+      if (map.has(cat)) {
+        const key = CustomerStorePage.CAT_KEY[cat] ?? 'catOther';
+        result.push({ category: cat, label: this.t(key), items: map.get(cat)! });
+        map.delete(cat);
+      }
+    }
+    // Remaining uncategorized
+    for (const [cat, items] of map.entries()) {
+      result.push({ category: cat || 'other', label: cat || this.t('catOther'), items });
+    }
+    return result;
   });
 
   cartCount = computed(() => {

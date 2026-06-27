@@ -81,6 +81,18 @@
   .badge-label { font-size: 0.62rem; font-weight: 700; color: #1e293b; text-align: center; line-height: 1.25; white-space: normal; max-width: 68px; }
 }
 
+// ── Category header ───────────────────────────────────────────────────────
+.cat-header {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #b45309;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.6rem 0.75rem 0.25rem;
+  border-bottom: 2px solid #fed7aa;
+  margin: 0.5rem 0.75rem 0;
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────
 .items {
   display: flex;

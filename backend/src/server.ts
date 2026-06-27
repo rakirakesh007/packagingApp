@@ -41,6 +41,7 @@ import reportsRoute from './routes/reports.route';
 import usersRoute from './routes/users.route';
 import shopsRoute from './routes/shops.route';
 import publicRoute from './routes/public.route';
+import categoryRoute from './routes/category.route';
 import { requireAuth, requireAdmin, assertJwtSecretConfigured } from './middleware/auth.middleware';
 
 assertJwtSecretConfigured();
@@ -68,6 +69,7 @@ app.use('/expenses', requireAuth, requireAdmin, expensesRoute);
 app.use('/reports', requireAuth, reportsRoute);
 app.use('/users', requireAuth, requireAdmin, usersRoute);
 app.use('/shops', requireAuth, shopsRoute);
+app.use('/categories', requireAuth, categoryRoute);
 
 // ── Serve the Angular SPA in production ─────────────────────────────────────
 // render-build.sh places the frontend build at backend/static/frontend/browser.

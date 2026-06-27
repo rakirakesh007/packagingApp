@@ -158,8 +158,18 @@
             <input [(ngModel)]="formSearchAliases" name="formSearchAliases" class="w-full border rounded-lg p-3" placeholder="e.g. methi, fenugreek seeds, सौंफ fennel" />
           </label>
 
+          <label class="block md:col-span-2">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Category</span>
+            <select [(ngModel)]="formCategory" name="formCategory" class="w-full border rounded-lg p-3 bg-white">
+              <option value="">— Select category —</option>
+              @for (cat of categories(); track cat.id) {
+                <option [value]="cat.name">{{ cat.name }} {{ cat.hindi_name ? '(' + cat.hindi_name + ')' : '' }}</option>
+              }
+            </select>
+          </label>
+
           <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Stock</span>
+            <span class="block text-sm font-medium text-gray-700 mb-1">Stock <span class="text-gray-400 font-normal">(sheets)</span></span>
             <input [(ngModel)]="formStock" name="formStock" type="number" class="w-full border rounded-lg p-3" min="0" />
           </label>
 

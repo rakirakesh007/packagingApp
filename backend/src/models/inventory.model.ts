@@ -80,6 +80,11 @@ const inventorySchema = new Schema(
       trim: true,
       default: '',
     },
+    category: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     versionKey: false,

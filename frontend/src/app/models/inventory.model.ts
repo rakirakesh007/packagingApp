@@ -17,4 +17,5 @@ export interface InventoryItem {
   image_url?: string;
   ingredients?: string;
   search_aliases?: string;
+  category?: string;
 }
