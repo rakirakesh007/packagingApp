@@ -13,6 +13,7 @@ import { CustomerOrderService, CatalogItem } from '../services/customer-order.se
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { environment } from '../../environments/environment';
 import { TRANSLATIONS, Lang } from './i18n';
+import { CATEGORIES } from '../models/categories.const';
 
 const FREE_DELIVERY_THRESHOLD = 499;
 const DELIVERY_FEE = 20;
@@ -81,9 +82,7 @@ export class CustomerStorePage implements OnInit {
   }
 
   // ── Computed ─────────────────────────────────────────────────────────────
-  private static readonly CAT_ORDER = [
-    'Powder Spices', 'Whole Spices', 'Mix Masala Whole', 'Mix Masala Powder',
-  ];
+  private static readonly CAT_ORDER = CATEGORIES.map((c) => c.name);
   private static readonly CAT_KEY: Record<string, string> = {
     'Powder Spices':     'catPowderSpices',
     'Whole Spices':      'catWholeSpices',

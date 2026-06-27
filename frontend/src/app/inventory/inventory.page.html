@@ -162,8 +162,8 @@
             <span class="block text-sm font-medium text-gray-700 mb-1">Category</span>
             <select [(ngModel)]="formCategory" name="formCategory" class="w-full border rounded-lg p-3 bg-white">
               <option value="">— Select category —</option>
-              @for (cat of categories(); track cat.id) {
-                <option [value]="cat.name">{{ cat.name }} {{ cat.hindi_name ? '(' + cat.hindi_name + ')' : '' }}</option>
+              @for (cat of categories; track cat.name) {
+                <option [value]="cat.name">{{ cat.name }} ({{ cat.hindi_name }})</option>
               }
             </select>
           </label>

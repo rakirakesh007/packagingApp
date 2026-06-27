@@ -15,8 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { ToastService } from '../services/toast.service';
 import { InventoryItem } from '../models/inventory.model';
 import { SheetQtyPipe } from '../core/sheet-qty.pipe';
-import { CategoryService, Category } from '../services/category.service';
-import { forkJoin } from 'rxjs';
+import { CATEGORIES, CategoryDef } from '../models/categories.const';
 
 @Component({
   selector: 'app-inventory',
@@ -28,7 +27,6 @@ import { forkJoin } from 'rxjs';
 })
 export class InventoryPage implements OnInit {
   private inventoryService = inject(InventoryService);
-  private categoryService  = inject(CategoryService);
   private loading = inject(GlobalLoadingService);
   private auth = inject(AuthService);
   private toast = inject(ToastService);
@@ -41,7 +39,7 @@ export class InventoryPage implements OnInit {
   };
 
   items      = signal<InventoryItem[]>([]);
-  categories = signal<Category[]>([]);
+  readonly categories: CategoryDef[] = CATEGORIES;
   searchQuery = signal('');
   isAdmin = computed(() => this.auth.userRole() === 'admin');
 
@@ -87,18 +85,7 @@ export class InventoryPage implements OnInit {
   formCategory      = '';
 
   ngOnInit(): void {
-    this.loading.show();
-    forkJoin({
-      items:      this.inventoryService.getItems(),
-      categories: this.categoryService.getAll(),
-    }).subscribe({
-      next: ({ items, categories }) => {
-        this.items.set(items);
-        this.categories.set(categories);
-      },
-      error:    (err) => { console.error('Failed to load:', err); this.loading.hide(); },
-      complete: ()    => this.loading.hide(),
-    });
+    this.fetchItems();
   }
 
   fetchItems(): void {

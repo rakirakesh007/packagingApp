@@ -83,12 +83,6 @@ export const routes: Routes = [
           import('./users-admin/users-admin.page').then((m) => m.UsersAdminPage),
         canActivate: [adminGuard],
       },
-      {
-        path: 'categories',
-        loadComponent: () =>
-          import('./categories/categories.page').then((m) => m.CategoriesPage),
-        canActivate: [adminGuard],
-      },
       // ── Delivery Boy routes ─────────────────────────────────────────────
       {
         path: 'sales',
