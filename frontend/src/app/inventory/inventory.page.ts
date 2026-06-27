@@ -79,10 +79,11 @@ export class InventoryPage implements OnInit {
   formMrpPerUnit = 0;
   formWholesalePricePerSheet = 0;
   formStock = 0;
-  formThreshold = 5;
+  formThreshold = 1;
   formIngredients   = '';
   formSearchAliases = '';
   formCategory      = '';
+  formInStock       = true;
 
   ngOnInit(): void {
     this.fetchItems();
@@ -119,6 +120,7 @@ export class InventoryPage implements OnInit {
     this.formIngredients    = item.ingredients ?? '';
     this.formSearchAliases  = item.search_aliases ?? '';
     this.formCategory       = item.category ?? '';
+    this.formInStock        = item.in_stock ?? true;
     this.showItemModal.set(true);
   }
 
@@ -150,6 +152,7 @@ export class InventoryPage implements OnInit {
       ingredients:                this.formIngredients.trim(),
       search_aliases:             this.formSearchAliases.trim(),
       category:                   this.formCategory,
+      in_stock:                   this.formInStock,
     };
 
     this.loading.show();
@@ -186,6 +189,7 @@ export class InventoryPage implements OnInit {
     this.formIngredients   = item.ingredients ?? '';
     this.formSearchAliases = item.search_aliases ?? '';
     this.formCategory      = item.category ?? '';
+    this.formInStock       = item.in_stock ?? true;
     this.showItemModal.set(true);
   }
 
@@ -238,6 +242,16 @@ export class InventoryPage implements OnInit {
     return `DMH-${day}${month}${year}`;
   }
 
+  toggleInStock(item: InventoryItem): void {
+    const newVal = !(item.in_stock ?? true);
+    this.inventoryService.updateProduct(item.id, { in_stock: newVal } as Partial<InventoryItem>).subscribe({
+      next: () => {
+        this.items.update(list => list.map(i => i.id === item.id ? { ...i, in_stock: newVal } : i));
+      },
+      error: () => this.toast.error('Could not update stock status.'),
+    });
+  }
+
   private resetForm(): void {
     this.formItemName   = '';
     this.formHindiName  = '';
@@ -247,10 +261,11 @@ export class InventoryPage implements OnInit {
     this.formMrpPerUnit             = 0;
     this.formWholesalePricePerSheet = 0;
     this.formStock       = 0;
-    this.formThreshold   = 5;
+    this.formThreshold   = 1;
     this.formIngredients   = '';
     this.formSearchAliases = '';
     this.formCategory      = '';
+    this.formInStock       = true;
   }
 
   addItem(): void {

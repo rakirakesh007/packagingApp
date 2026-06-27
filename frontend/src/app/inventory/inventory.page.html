@@ -72,6 +72,16 @@
                 @if (isAdmin()) {
                   <div class="flex gap-1 justify-center flex-wrap">
                     <button
+                      (click)="toggleInStock(item)"
+                      [ngClass]="(item.in_stock ?? true)
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'"
+                      class="text-xs px-2 py-1 rounded font-semibold"
+                      [title]="(item.in_stock ?? true) ? 'In Stock — click to mark Out of Stock' : 'Out of Stock — click to mark In Stock'"
+                    >
+                      {{ (item.in_stock ?? true) ? '✓' : '✗' }}
+                    </button>
+                    <button
                       (click)="downloadLabelSheet([item])"
                       class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold"
                       title="Download Labels"
@@ -166,6 +176,20 @@
                 <option [value]="cat.name">{{ cat.name }} ({{ cat.hindi_name }})</option>
               }
             </select>
+          </label>
+
+          <label class="block md:col-span-2">
+            <span class="block text-sm font-medium text-gray-700 mb-1">Availability</span>
+            <button
+              type="button"
+              (click)="formInStock = !formInStock"
+              [ngClass]="formInStock
+                ? 'bg-green-100 text-green-700 border-green-300'
+                : 'bg-gray-100 text-gray-500 border-gray-300'"
+              class="px-5 py-2 rounded-lg font-semibold text-sm border"
+            >
+              {{ formInStock ? '✓ In Stock' : '✗ Out of Stock' }}
+            </button>
           </label>
 
           <label class="block">

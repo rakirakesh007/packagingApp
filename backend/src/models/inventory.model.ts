@@ -85,6 +85,10 @@ const inventorySchema = new Schema(
       trim: true,
       default: '',
     },
+    in_stock: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     versionKey: false,

@@ -18,4 +18,5 @@ export interface InventoryItem {
   ingredients?: string;
   search_aliases?: string;
   category?: string;
+  in_stock?: boolean;
 }
