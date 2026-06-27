@@ -1,4 +1,4 @@
-<div class="label-sheet">
+<div class="label-sheet" [class.no-ingredients]="!hasIngredients()">
   @if (labels().length === 0) {
     <div style="padding: 40px 20px; text-align: center; color: #999; grid-column: 1 / -1; font-size: 16px;">
       <p>Go to Inventory page and click download labels on an item</p>
@@ -45,13 +45,10 @@
               }
             </div>
 
-            <!-- FSSAI & License — logo + label on row 1, number on row 2 -->
+            <!-- FSSAI — single line -->
             <div class="fssai-section">
-              <div class="fssai-row1">
-                <img src="assets/fssai-logo.png" alt="FSSAI" class="fssai-logo" />
-                <span class="fssai-label">Lic No.:</span>
-              </div>
-              <div class="fssai-number">{{ labelSheetConfig.fssaiNo }}</div>
+              <img src="assets/fssai-logo.png" alt="FSSAI" class="fssai-logo" />
+              <span class="fssai-label">Lic No.: {{ labelSheetConfig.fssaiNo }}</span>
             </div>
 
             <!-- Ingredients (only shown when set) -->

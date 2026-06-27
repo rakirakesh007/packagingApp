@@ -19,17 +19,17 @@
     />
   </header>
 
-  <!-- Trust badges (slim horizontal scroll) -->
+  <!-- Trust badges — flat colored pills, clearly different from category cards -->
   <div class="badges">
-    <div class="badge"><span class="badge-icon">🏡</span><span class="badge-label">{{ t('badgeBiharTitle') }}</span></div>
-    <div class="badge"><span class="badge-icon">🌾</span><span class="badge-label">{{ t('badgeFarmTitle') }}</span></div>
-    <div class="badge"><span class="badge-icon">💵</span><span class="badge-label">{{ t('badgeCODTitle') }}</span></div>
-    <div class="badge"><span class="badge-icon">🧴</span><span class="badge-label">{{ t('badgeHygTitle') }}</span></div>
-    <div class="badge"><span class="badge-icon">✅</span><span class="badge-label">{{ t('badgeQualTitle') }}</span></div>
-    <div class="badge"><span class="badge-icon">🚚</span><span class="badge-label">{{ t('badgeFreeTitle') }}</span></div>
+    <span class="badge b-orange">🏡 {{ t('badgeBiharTitle') }}</span>
+    <span class="badge b-green">🌾 {{ t('badgeFarmTitle') }}</span>
+    <span class="badge b-green">💵 {{ t('badgeCODTitle') }}</span>
+    <span class="badge b-blue">🧴 {{ t('badgeHygTitle') }}</span>
+    <span class="badge b-purple">✅ {{ t('badgeQualTitle') }}</span>
+    <span class="badge b-teal">🚚 {{ t('badgeFreeTitle') }}</span>
   </div>
 
-  <!-- Category cards (2 × 2 grid) -->
+  <!-- Category cards — compact horizontal rows, 2 per row -->
   @if (!isSearching()) {
     <div class="cat-grid">
       @for (def of catDefs; track def.name) {
@@ -40,9 +40,10 @@
           type="button"
         >
           <span class="cat-emoji">{{ def.emoji }}</span>
-          <span class="cat-name">{{ lang() === 'hi' ? def.hindi : def.name }}</span>
-          <span class="cat-hindi">{{ lang() === 'hi' ? def.name : def.hindi }}</span>
-          <span class="cat-count">{{ countFor(def.name) }} {{ t('items') }}</span>
+          <span class="cat-label">
+            {{ lang() === 'hi' ? def.hindi : def.name }}
+            <span class="cat-count">({{ countFor(def.name) }})</span>
+          </span>
         </button>
       }
     </div>
@@ -51,10 +52,11 @@
   <!-- Section heading -->
   <div class="section-heading">
     @if (isSearching()) {
-      <span class="section-label">🔍 {{ t('search') }}</span>
+      <span class="section-label">🔍 {{ searchQuery() }}</span>
     } @else {
       <span class="section-label">
-        {{ selectedCategoryDef()?.emoji }} {{ lang() === 'hi' ? selectedCategoryDef()?.hindi : selectedCategoryDef()?.name }}
+        {{ selectedCategoryDef()?.emoji }}
+        {{ lang() === 'hi' ? selectedCategoryDef()?.hindi : selectedCategoryDef()?.name }}
       </span>
     }
     <span class="section-count">{{ activeItems().length }} {{ t('items') }}</span>

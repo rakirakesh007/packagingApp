@@ -17,6 +17,7 @@ export class LabelSheetComponent implements OnInit {
 
   items = signal<InventoryItem[]>([]);
   totalLabels = signal(0);
+  hasIngredients = computed(() => this.items().some(i => !!i.ingredients));
   logoDataUrl = signal<string | null>(null);
   vegDataUrl = signal<string | null>(null);
 
@@ -72,7 +73,8 @@ export class LabelSheetComponent implements OnInit {
         this.inventoryService.getItemsByIds(itemIds).subscribe({
           next: (fetched) => {
             this.items.set(fetched);
-            this.totalLabels.set(paddedTotal);
+            const hasIngr = fetched.some(i => !!i.ingredients);
+            this.totalLabels.set(hasIngr ? 35 : 55);
           },
           error: (err) => {
             console.error('Failed to fetch items:', err);
