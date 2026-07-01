@@ -17,6 +17,12 @@ import { InventoryItem } from '../models/inventory.model';
 import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 import { CATEGORIES, CategoryDef } from '../models/categories.const';
 
+interface InventoryGroup {
+  name: string;
+  hindi_name: string;
+  items: InventoryItem[];
+}
+
 @Component({
   selector: 'app-inventory',
   standalone: true,
@@ -56,9 +62,38 @@ export class InventoryPage implements OnInit {
       : this.items();
   });
 
+  // ── Accordion ─────────────────────────────────────────────────────────────
+  groupedInventory = computed<InventoryGroup[]>(() => {
+    const order = new Map<string, InventoryGroup>();
+    for (const item of this.filteredItems()) {
+      const key = item.item_name.toLowerCase().trim();
+      if (!order.has(key)) {
+        order.set(key, { name: item.item_name, hindi_name: item.hindi_name ?? '', items: [] });
+      }
+      order.get(key)!.items.push(item);
+    }
+    return [...order.values()];
+  });
+
+  expandedGroups = signal<Set<string>>(new Set());
+
+  toggleGroup(name: string): void {
+    this.expandedGroups.update((set) => {
+      const next = new Set(set);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  isExpanded(name: string): boolean {
+    return this.expandedGroups().has(name);
+  }
+
   showItemModal = signal(false);
   modalMode = signal<'add' | 'edit'>('add');
   editingItemId = signal<string | null>(null);
+  formStep = signal<'base' | 'variant'>('base');
 
   // Label preview
   previewItem    = signal<InventoryItem | null>(null);
@@ -83,6 +118,8 @@ export class InventoryPage implements OnInit {
   formIngredients   = '';
   formSearchAliases = '';
   formCategory      = '';
+  formVariantName   = '';
+  formSaleMode: 'sheet' | 'packet' = 'sheet';
   formInStock       = true;
 
   ngOnInit(): void {
@@ -102,6 +139,7 @@ export class InventoryPage implements OnInit {
     this.modalMode.set('add');
     this.editingItemId.set(null);
     this.resetForm();
+    this.formStep.set('base');
     this.showItemModal.set(true);
   }
 
@@ -120,12 +158,38 @@ export class InventoryPage implements OnInit {
     this.formIngredients    = item.ingredients ?? '';
     this.formSearchAliases  = item.search_aliases ?? '';
     this.formCategory       = item.category ?? '';
+    this.formVariantName    = item.variant_name ?? '';
+    this.formSaleMode       = (item.sale_mode ?? 'sheet') as 'sheet' | 'packet';
     this.formInStock        = item.in_stock ?? true;
+    this.formStep.set('variant');
     this.showItemModal.set(true);
   }
 
   closeItemModal(): void {
     this.showItemModal.set(false);
+  }
+
+  openAddVariant(group: InventoryGroup): void {
+    this.modalMode.set('add');
+    this.editingItemId.set(null);
+    const first = group.items[0];
+    this.formItemName       = first.item_name;
+    this.formHindiName      = first.hindi_name ?? '';
+    this.formDescription    = '';
+    this.formIngredients    = first.ingredients ?? '';
+    this.formSearchAliases  = first.search_aliases ?? '';
+    this.formCategory       = first.category ?? '';
+    this.formVariantName    = '';
+    this.formSaleMode       = 'sheet';
+    this.formUnitsPerSheet  = 10;
+    this.formQuantityPerUnit = 0;
+    this.formMrpPerUnit     = 0;
+    this.formWholesalePricePerSheet = 0;
+    this.formStock          = 0;
+    this.formThreshold      = first.low_stock_threshold;
+    this.formInStock        = true;
+    this.formStep.set('variant');
+    this.showItemModal.set(true);
   }
 
   openLabelPreview(item: InventoryItem): void {
@@ -152,6 +216,8 @@ export class InventoryPage implements OnInit {
       ingredients:                this.formIngredients.trim(),
       search_aliases:             this.formSearchAliases.trim(),
       category:                   this.formCategory,
+      variant_name:               this.formVariantName.trim(),
+      sale_mode:                  this.formSaleMode,
       in_stock:                   this.formInStock,
     };
 
@@ -189,7 +255,10 @@ export class InventoryPage implements OnInit {
     this.formIngredients   = item.ingredients ?? '';
     this.formSearchAliases = item.search_aliases ?? '';
     this.formCategory      = item.category ?? '';
+    this.formVariantName   = item.variant_name ?? '';
+    this.formSaleMode      = (item.sale_mode ?? 'sheet') as 'sheet' | 'packet';
     this.formInStock       = item.in_stock ?? true;
+    this.formStep.set('variant');
     this.showItemModal.set(true);
   }
 
@@ -265,6 +334,8 @@ export class InventoryPage implements OnInit {
     this.formIngredients   = '';
     this.formSearchAliases = '';
     this.formCategory      = '';
+    this.formVariantName   = '';
+    this.formSaleMode      = 'sheet';
     this.formInStock       = true;
   }
 

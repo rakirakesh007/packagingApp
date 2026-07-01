@@ -4,13 +4,16 @@ import { requireSelfOrAdmin } from '../middleware/auth.middleware';
 import { computeHoldings } from '../utils/holdings.util';
 const router = Router();
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 router.get('/eod/:delivery_boy_id', requireSelfOrAdmin('delivery_boy_id'), async (req, res) => {
   const delivery_boy_id = String(req.params['delivery_boy_id']);
 
   try {
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const inIST = new Date(Date.now() + IST_OFFSET_MS);
+    const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate();
+    const start = new Date(Date.UTC(y, m, d,  0,  0,  0,   0) - IST_OFFSET_MS);
+    const end   = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - IST_OFFSET_MS);
 
     // Current running balance (what the boy holds right now)
     const holdings = await computeHoldings(delivery_boy_id);

@@ -59,43 +59,92 @@
         {{ lang() === 'hi' ? selectedCategoryDef()?.hindi : selectedCategoryDef()?.name }}
       </span>
     }
-    <span class="section-count">{{ activeItems().length }} {{ t('items') }}</span>
+    <span class="section-count">{{ groupedItems().length }} {{ t('items') }}</span>
   </div>
 
-  <!-- Items -->
+  <!-- Compact product cards — tap to open variant picker sheet -->
   <div class="items">
-    @for (item of activeItems(); track item.id) {
-      <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
-        <div class="item-info">
-          <span class="item-name">
-            {{ displayName(item) }}
-            @if (variant(item)) {
-              <span class="variant-badge">{{ variant(item) }}</span>
-            }
+    @for (group of groupedItems(); track group.item_name) {
+      <button
+        type="button"
+        class="product-card"
+        [class.in-cart]="groupInCart(group)"
+        (click)="openSheet(group)"
+      >
+        <div class="product-info">
+          <span class="product-name">
+            {{ lang() === 'hi' ? (group.hindi_name || group.item_name) : (group.item_name || group.hindi_name) }}
           </span>
-          @if (subName(item)) {
-            <span class="item-sub">({{ subName(item) }})</span>
+          @if (group.hindi_name && group.item_name) {
+            <span class="product-sub">{{ lang() === 'hi' ? group.item_name : group.hindi_name }}</span>
           }
-          <span class="item-price">₹{{ item.price_per_sheet }}<span class="item-per">{{ t('perSheet') }}</span></span>
+          <span class="size-hint">{{ group.variants.length }} {{ group.variants.length === 1 ? 'size' : 'sizes' }} available</span>
         </div>
-        <div class="item-controls">
-          @if (getQty(item.id) > 0) {
-            <button class="btn-minus" (click)="decrement(item)" type="button" aria-label="−">−</button>
-            <span class="qty">{{ getQty(item.id) }}</span>
+        <div class="product-right">
+          @if (groupCartQty(group) > 0) {
+            <span class="cart-badge">{{ groupCartQty(group) }}</span>
+          } @else {
+            <span class="arrow-icon">›</span>
           }
-          <button
-            class="btn-plus"
-            (click)="increment(item)"
-            type="button"
-            [disabled]="getQty(item.id) >= item.sheets_available"
-            aria-label="+"
-          >+</button>
         </div>
-      </div>
+      </button>
     } @empty {
       <div class="empty">{{ t('noItems') }}</div>
     }
   </div>
+
+  <!-- Variant picker bottom sheet -->
+  @if (activeGroup()) {
+    <div class="sheet-overlay" (click)="closeSheet()"></div>
+    <div class="variant-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div>
+          <p class="sheet-product-name">
+            {{ lang() === 'hi' ? (activeGroup()!.hindi_name || activeGroup()!.item_name) : (activeGroup()!.item_name || activeGroup()!.hindi_name) }}
+          </p>
+          @if (activeGroup()!.hindi_name && activeGroup()!.item_name) {
+            <p class="sheet-product-sub">{{ lang() === 'hi' ? activeGroup()!.item_name : activeGroup()!.hindi_name }}</p>
+          }
+        </div>
+        <button type="button" class="sheet-close" (click)="closeSheet()">✕</button>
+      </div>
+
+      <div class="variant-list">
+        @for (v of activeGroup()!.variants; track v.id) {
+          <div class="variant-item" [class.variant-selected]="getQty(v.id) > 0">
+            <div class="variant-left">
+              @if (variantLabel(v)) {
+                <span class="variant-size">{{ variantLabel(v) }}</span>
+              }
+              <span class="variant-price">₹{{ v.price_per_sheet }}<span class="variant-per">{{ v.sale_mode === 'packet' ? '/pkt' : '/sheet' }}</span></span>
+            </div>
+            <div class="variant-controls">
+              @if (getQty(v.id) > 0) {
+                <button class="btn-minus" type="button" (click)="decrement(v)" aria-label="−">−</button>
+                <span class="qty-num">{{ getQty(v.id) }}</span>
+              }
+              <button
+                class="btn-plus"
+                type="button"
+                (click)="increment(v)"
+                [disabled]="getQty(v.id) >= v.sheets_available"
+                aria-label="+"
+              >+</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <button type="button" class="btn-done" (click)="closeSheet()">
+        @if (groupCartQty(activeGroup()!)) {
+          Done · {{ groupCartQty(activeGroup()!) }} in cart
+        } @else {
+          Done
+        }
+      </button>
+    </div>
+  }
 
   <!-- Sticky cart bar -->
   @if (cartCount() > 0 && !orderPlaced()) {
@@ -126,9 +175,7 @@
           <div class="review-line">
             <span>
               {{ l.sheets }} × {{ displayName(l.item) }}
-              @if (variant(l.item)) {
-                <span class="review-variant">{{ variant(l.item) }}</span>
-              }
+              <span class="review-unit">@ ₹{{ l.item.price_per_sheet }}/{{ l.item.sale_mode === 'packet' ? 'pkt' : 'sheet' }}</span>
             </span>
             <span>₹{{ l.sheets * l.item.price_per_sheet }}</span>
           </div>

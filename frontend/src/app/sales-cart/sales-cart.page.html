@@ -31,42 +31,71 @@
     </div>
   }
 
-  <!-- Items List -->
+  <!-- Items List (grouped by product name) -->
   @if (!noAssignment()) {
   <div class="items-list">
-    @for (item of filteredItems(); track item.id) {
-      <div class="item-card" [class.in-cart]="getQty(item.id) > 0">
-        <div class="item-info">
-          <span class="item-name">{{ item.hindi_name || item.item_name }}</span>
-          @if (item.hindi_name) {
-            <span class="text-xs text-gray-500">({{ item.item_name }})</span>
+    @for (group of groupedItems(); track group.item_name) {
+
+      <!-- Group header -->
+      <div class="group-header" [class.has-cart]="groupCartQty(group) > 0"
+           (click)="toggleGroup(group.item_name)" role="button">
+        <div class="group-info">
+          <span class="group-name">{{ group.hindi_name || group.item_name }}</span>
+          @if (group.hindi_name) {
+            <span class="group-sub">({{ group.item_name }})</span>
           }
-          <span class="item-price">₹{{ sheetPrice(item) }}/sheet &middot; {{ item.total_stock }} sheets</span>
-          @if (item.total_stock <= item.low_stock_threshold) {
-            <span class="low-stock-badge">Low Stock</span>
+          @if (group.variants.length > 1) {
+            <span class="group-count">{{ group.variants.length }} sizes</span>
           }
         </div>
-        <div class="item-controls">
-          @if (getQty(item.id) > 0) {
-            <button class="btn-minus" (click)="decrement(item.id)" aria-label="Remove one">−</button>
-            <span class="qty-badge">{{ getQty(item.id) }}</span>
+        <div class="group-right">
+          @if (groupCartQty(group) > 0) {
+            <span class="group-badge">{{ groupCartQty(group) }}</span>
           }
-          <button class="btn-plus" (click)="increment(item.id)" aria-label="Add one">+</button>
+          <span class="group-arrow">{{ isExpanded(group.item_name) || searchQuery() ? '▾' : '▸' }}</span>
         </div>
-        @if (getQty(item.id) > 0) {
-          <div class="discount-row">
-            <span>Price &#x20B9;</span>
-            <input
-              type="number"
-              min="0"
-              [ngModel]="getPrice(item.id)"
-              (ngModelChange)="setPrice(item.id, +$event)"
-              placeholder="0"
-            />
-            <span>/sheet</span>
+      </div>
+
+      <!-- Variant cards — shown when expanded or searching -->
+      @if (isExpanded(group.item_name) || searchQuery()) {
+        @for (item of group.variants; track item.id) {
+          <div class="item-card variant-card" [class.in-cart]="getQty(item.id) > 0">
+            <div class="item-info">
+              @if (item.variant_name) {
+                <span class="variant-label">{{ item.variant_name }}</span>
+              }
+              <span class="item-price">
+                ₹{{ sheetPrice(item) }}/{{ item.sale_mode === 'packet' ? 'pkt' : 'sheet' }}
+                &middot; {{ item.total_stock }} {{ item.sale_mode === 'packet' ? 'pkts' : 'sheets' }}
+              </span>
+              @if (item.total_stock <= item.low_stock_threshold) {
+                <span class="low-stock-badge">Low Stock</span>
+              }
+            </div>
+            <div class="item-controls">
+              @if (getQty(item.id) > 0) {
+                <button class="btn-minus" (click)="decrement(item.id)" aria-label="−">−</button>
+                <span class="qty-badge">{{ getQty(item.id) }}</span>
+              }
+              <button class="btn-plus" (click)="increment(item.id)" aria-label="+">+</button>
+            </div>
+            @if (getQty(item.id) > 0) {
+              <div class="discount-row">
+                <span>Price &#x20B9;</span>
+                <input
+                  type="number"
+                  min="0"
+                  [ngModel]="getPrice(item.id)"
+                  (ngModelChange)="setPrice(item.id, +$event)"
+                  placeholder="0"
+                />
+                <span>/{{ item.sale_mode === 'packet' ? 'pkt' : 'sheet' }}</span>
+              </div>
+            }
           </div>
         }
-      </div>
+      }
+
     } @empty {
       <div class="empty-state">No spices found</div>
     }
@@ -96,11 +125,15 @@
         @for (ci of cartItemsList(); track ci.item.id) {
           <div class="checkout-item">
             <span>
-              {{ ci.sheets_sold }} sheets × {{ ci.item.hindi_name || ci.item.item_name }}
-              @if (ci.item.hindi_name) {
-                <span class="text-xs text-gray-500">({{ ci.item.item_name }})</span>
+              {{ ci.sheets_sold }} × {{ ci.item.hindi_name || ci.item.item_name }}
+              @if (ci.item.variant_name) {
+                <span class="text-xs font-semibold"
+                  [class.text-blue-600]="ci.item.sale_mode !== 'packet'"
+                  [class.text-purple-600]="ci.item.sale_mode === 'packet'">
+                  — {{ ci.item.variant_name }}
+                </span>
               }
-              <span class="text-xs text-gray-500"> @ &#x20B9;{{ ci.selling_price_per_sheet }}/sheet</span>
+              <span class="text-xs text-gray-500"> @ &#x20B9;{{ ci.selling_price_per_sheet }}/{{ ci.item.sale_mode === 'packet' ? 'pkt' : 'sheet' }}</span>
             </span>
             <span>&#x20B9;{{ ci.selling_price_per_sheet * ci.sheets_sold }}</span>
           </div>

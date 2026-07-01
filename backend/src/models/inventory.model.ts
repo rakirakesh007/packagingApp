@@ -85,9 +85,19 @@ const inventorySchema = new Schema(
       trim: true,
       default: '',
     },
+    variant_name: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     in_stock: {
       type: Boolean,
       default: true,
+    },
+    sale_mode: {
+      type: String,
+      enum: ['sheet', 'packet'],
+      default: 'sheet',
     },
   },
   {

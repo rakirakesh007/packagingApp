@@ -28,9 +28,15 @@ interface EodByProduct {
   item_name: string;
   hindi_name: string;
   units_per_sheet: number;
+  wholesale_price_per_sheet?: number;
   opening: number;
   sold: number;
   remaining: number;
+}
+
+interface DailySale {
+  day: number;
+  revenue: number;
 }
 
 interface MonthlySummary {
@@ -69,6 +75,7 @@ export class AdminReportsPage implements OnInit {
 
   eodByBoy     = signal<EodByBoy[]>([]);
   eodByProduct = signal<EodByProduct[]>([]);
+  dailySales   = signal<DailySale[]>([]);
   monthlySummary = signal<MonthlySummary>({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
@@ -81,6 +88,8 @@ export class AdminReportsPage implements OnInit {
     const [year, month] = this.selectedMonth().split('-').map(Number);
     return new Date(year, month - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
   });
+
+  maxDailyRevenue = computed(() => Math.max(...this.dailySales().map(d => d.revenue), 1));
 
   ngOnInit(): void { this.loadAll(); }
 
@@ -102,12 +111,14 @@ export class AdminReportsPage implements OnInit {
       eodProduct: this.http.get<EodByProduct[]>('/admin/reports/eod-by-product'),
       monthly:    this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`),
       staff:      this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`),
+      daily:      this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`),
     }).subscribe({
-      next: ({ eodBoy, eodProduct, monthly, staff }) => {
+      next: ({ eodBoy, eodProduct, monthly, staff, daily }) => {
         this.eodByBoy.set(eodBoy);
         this.eodByProduct.set(eodProduct);
         this.monthlySummary.set(monthly);
         this.staffMonthly.set(staff.staff);
+        this.dailySales.set(daily);
       },
       error: (err) => console.error('Reports load failed:', err),
       complete: () => this.loading.hide(),
@@ -121,8 +132,13 @@ export class AdminReportsPage implements OnInit {
     forkJoin({
       monthly: this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`),
       staff:   this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`),
+      daily:   this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`),
     }).subscribe({
-      next: ({ monthly, staff }) => { this.monthlySummary.set(monthly); this.staffMonthly.set(staff.staff); },
+      next: ({ monthly, staff, daily }) => {
+        this.monthlySummary.set(monthly);
+        this.staffMonthly.set(staff.staff);
+        this.dailySales.set(daily);
+      },
       error: (err) => console.error('Monthly refresh failed:', err),
       complete: () => this.loading.hide(),
     });

@@ -13,6 +13,9 @@ export interface CatalogItem {
   mrp_per_unit: number;
   image_url: string | null;
   category: string;
+  variant_name: string;
+  quantity_per_unit: number;
+  sale_mode: 'sheet' | 'packet';
 }
 
 @Injectable({ providedIn: 'root' })

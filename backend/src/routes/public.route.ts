@@ -16,6 +16,7 @@ router.get('/catalog', async (_req: Request, res: Response) => {
       {
         item_name: 1, hindi_name: 1, units_per_sheet: 1, wholesale_price_per_sheet: 1,
         total_stock: 1, search_aliases: 1, mrp_per_unit: 1, image_url: 1, category: 1,
+        variant_name: 1, quantity_per_unit: 1, sale_mode: 1,
       }
     ).sort({ item_name: 1 }).lean();
 
@@ -28,11 +29,14 @@ router.get('/catalog', async (_req: Request, res: Response) => {
         hindi_name:       (d as any).hindi_name ?? '',
         units_per_sheet:  units,
         price_per_sheet:  perPacket * units,
-        sheets_available: Math.floor((d as any).total_stock ?? 0),
-        search_aliases:   (d as any).search_aliases ?? '',
-        mrp_per_unit:     (d as any).mrp_per_unit ?? 0,
-        image_url:        (d as any).image_url ?? null,
-        category:         (d as any).category ?? '',
+        sheets_available:  Math.floor((d as any).total_stock ?? 0),
+        search_aliases:    (d as any).search_aliases ?? '',
+        mrp_per_unit:      (d as any).mrp_per_unit ?? 0,
+        image_url:         (d as any).image_url ?? null,
+        category:          (d as any).category ?? '',
+        variant_name:      (d as any).variant_name ?? '',
+        quantity_per_unit: (d as any).quantity_per_unit ?? 0,
+        sale_mode:         (d as any).sale_mode ?? 'sheet',
       };
     });
 

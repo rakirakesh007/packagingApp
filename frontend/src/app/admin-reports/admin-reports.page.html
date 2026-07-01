@@ -23,7 +23,7 @@
   <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
     <button class="tab-btn" [class.active]="activeTab() === 'eod'"     (click)="setTab('eod')">EOD Report</button>
     <button class="tab-btn" [class.active]="activeTab() === 'monthly'" (click)="setTab('monthly')">Monthly Summary</button>
-    <button class="tab-btn" [class.active]="activeTab() === 'staff'"   (click)="setTab('staff')">Staff Payments</button>
+    <!-- Staff Payments tab disabled for now -->
   </div>
 
   <!-- ── EOD Tab ─────────────────────────────────────────── -->
@@ -71,7 +71,7 @@
                   <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ row.cashCollected | number:'1.0-0' }}</td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No assignments today.</td></tr>
+                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No activity today.</td></tr>
               }
             </tbody>
           </table>
@@ -97,6 +97,9 @@
                     {{ row.hindi_name || row.item_name }}
                     @if (row.hindi_name) {
                       <span class="text-xs text-gray-400 ml-1">({{ row.item_name }})</span>
+                    }
+                    @if (row.wholesale_price_per_sheet) {
+                      <span class="text-xs text-indigo-500 ml-2">₹{{ row.wholesale_price_per_sheet * row.units_per_sheet }}/sheet</span>
                     }
                   </td>
                   <td class="px-4 py-3 text-right">{{ row.opening | sheetQty:row.units_per_sheet }}</td>
@@ -135,62 +138,35 @@
         </div>
       </div>
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-xl font-bold">Monthly Summary</h2>
-            <p class="text-sm text-gray-500">{{ selectedMonthLabel() }}</p>
+            <h2 class="text-xl font-bold">Daily Sales</h2>
+            <p class="text-sm text-gray-500">Revenue per day — {{ selectedMonthLabel() }}</p>
           </div>
           <button (click)="loadAll()" class="text-sm px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold">Refresh</button>
         </div>
+        @if (dailySales().length > 0) {
+          <div class="daily-chart">
+            @for (d of dailySales(); track d.day) {
+              <div class="bar-col" [title]="'Day ' + d.day + ': ₹' + d.revenue">
+                <div class="bar" [style.height.%]="maxDailyRevenue() > 0 ? (d.revenue / maxDailyRevenue() * 100) : 0"
+                  [class.bar-has-value]="d.revenue > 0"></div>
+                <div class="bar-label">{{ d.day }}</div>
+              </div>
+            }
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 mt-1 px-1">
+            <span>₹0</span>
+            <span>Max ₹{{ maxDailyRevenue() | number:'1.0-0' }}</span>
+          </div>
+        } @else {
+          <p class="text-center text-gray-400 py-8 text-sm">No sales data for this month.</p>
+        }
       </div>
     </section>
   }
 
-  <!-- ── Staff Tab ───────────────────────────────────────── -->
-  @if (activeTab() === 'staff') {
-    <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 overflow-hidden">
-      <div class="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <h2 class="text-xl font-bold">Staff Payments</h2>
-          <p class="text-sm text-gray-500">Payroll performance for {{ selectedMonthLabel() }}</p>
-        </div>
-        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">Formal Record</span>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
-            <tr>
-              <th class="px-4 py-3 text-left">Name</th>
-              <th class="px-4 py-3 text-right">Sheets Sold</th>
-              <th class="px-4 py-3 text-right">Total Sales</th>
-              <th class="px-4 py-3 text-right">Net Cash</th>
-              <th class="px-4 py-3 text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            @for (row of staffMonthly(); track row.deliveryBoyId) {
-              <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium text-gray-900">{{ row.boyName }}</td>
-                <td class="px-4 py-3 text-right">{{ row.totalSheets }}</td>
-                <td class="px-4 py-3 text-right">₹{{ row.totalSales | number:'1.0-0' }}</td>
-                <td class="px-4 py-3 text-right">₹{{ row.netCash | number:'1.0-0' }}</td>
-                <td class="px-4 py-3">
-                  <span class="px-2 py-1 rounded-full text-xs font-semibold"
-                    [class.bg-amber-100]="row.paymentStatus === 'Pending'"
-                    [class.text-amber-800]="row.paymentStatus === 'Pending'"
-                    [class.bg-emerald-100]="row.paymentStatus !== 'Pending'"
-                    [class.text-emerald-800]="row.paymentStatus !== 'Pending'">
-                    {{ row.paymentStatus }}
-                  </span>
-                </td>
-              </tr>
-            } @empty {
-              <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No payroll data for this month.</td></tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  }
+  <!-- ── Staff Tab — disabled for now ──────────────────── -->
+  <!-- @if (activeTab() === 'staff') { ... } -->
 
 </div>

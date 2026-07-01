@@ -14,14 +14,20 @@ type LoadingItemPayload = {
   item_name: string;
   hindi_name: string;
   wholesale_price_per_sheet: number;
+  variant_name: string;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 function dayBounds(dateParam?: string): { start: Date; end: Date } {
-  const day = dateParam ? new Date(dateParam) : new Date();
-  const start = new Date(day); start.setHours(0,  0,  0,   0);
-  const end   = new Date(day); end.setHours(23, 59, 59, 999);
-  return { start, end };
+  const base  = dateParam ? new Date(dateParam) : new Date();
+  const inIST = new Date(base.getTime() + IST_OFFSET_MS);
+  const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate();
+  return {
+    start: new Date(Date.UTC(y, m, d,  0,  0,  0,   0) - IST_OFFSET_MS),
+    end:   new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - IST_OFFSET_MS),
+  };
 }
 
 /**
@@ -40,7 +46,7 @@ function dayBounds(dateParam?: string): { start: Date; end: Date } {
 router.post('/', requireAdmin, async (req: Request, res: Response) => {
   const { delivery_boy_id, items, date } = req.body as {
     delivery_boy_id: string;
-    items: { item_id: string; qty: number; item_name?: string; hindi_name?: string; wholesale_price_per_sheet?: number }[];
+    items: { item_id: string; qty: number; item_name?: string; hindi_name?: string; wholesale_price_per_sheet?: number; variant_name?: string }[];
     date?: string;
   };
 
@@ -83,6 +89,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
           item_name: inv?.item_name ?? item.item_name ?? '',
           hindi_name: inv?.hindi_name ?? item.hindi_name ?? '',
           wholesale_price_per_sheet: item.wholesale_price_per_sheet || inv?.wholesale_price_per_sheet || 0,
+          variant_name: (inv as any)?.variant_name ?? item.variant_name ?? '',
         });
         return acc;
       },
@@ -103,6 +110,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
             item_name:                 String(item.item_name  ?? ''),
             hindi_name:                String(item.hindi_name ?? ''),
             wholesale_price_per_sheet: Number(item.wholesale_price_per_sheet ?? 0),
+            variant_name:              String(item.variant_name ?? ''),
           },
         ])
       );
@@ -114,6 +122,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
           current.item_name = incoming.item_name || current.item_name;
           current.hindi_name = incoming.hindi_name || current.hindi_name;
           current.wholesale_price_per_sheet = incoming.wholesale_price_per_sheet || current.wholesale_price_per_sheet;
+          current.variant_name = incoming.variant_name || current.variant_name;
           currentItems.set(incoming.item_id, current);
         } else {
           currentItems.set(incoming.item_id, incoming);

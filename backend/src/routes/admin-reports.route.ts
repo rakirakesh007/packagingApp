@@ -8,13 +8,27 @@ import { computeHoldings } from '../utils/holdings.util';
 
 const router = Router();
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function getISTDayBounds(): { start: Date; end: Date } {
+  const inIST = new Date(Date.now() + IST_OFFSET_MS);
+  const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate();
+  return {
+    start: new Date(Date.UTC(y, m, d,  0,  0,  0,   0) - IST_OFFSET_MS),
+    end:   new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - IST_OFFSET_MS),
+  };
+}
+
 function resolveMonthRange(month?: string, year?: string): { start: Date; end: Date; monthNumber: number; yearNumber: number } {
-  const now = new Date();
-  const monthNumber = month ? Math.max(1, Math.min(12, Number(month))) - 1 : now.getMonth();
-  const yearNumber = year ? Number(year) : now.getFullYear();
-  const start = new Date(yearNumber, monthNumber, 1, 0, 0, 0, 0);
-  const end = new Date(yearNumber, monthNumber + 1, 0, 23, 59, 59, 999);
-  return { start, end, monthNumber, yearNumber };
+  const inIST = new Date(Date.now() + IST_OFFSET_MS);
+  const monthNumber = month ? Math.max(1, Math.min(12, Number(month))) - 1 : inIST.getUTCMonth();
+  const yearNumber = year ? Number(year) : inIST.getUTCFullYear();
+  return {
+    start: new Date(Date.UTC(yearNumber, monthNumber, 1, 0, 0, 0, 0) - IST_OFFSET_MS),
+    end:   new Date(Date.UTC(yearNumber, monthNumber + 1, 0, 23, 59, 59, 999) - IST_OFFSET_MS),
+    monthNumber,
+    yearNumber,
+  };
 }
 
 /** Map item_id → units_per_sheet (frontend needs it to render "X sheets Y pcs"). */
@@ -24,14 +38,22 @@ async function buildUnitsPerSheetMap(itemIds: string[]): Promise<Map<string, num
   return new Map(docs.map(d => [String(d._id), d.units_per_sheet ?? 1]));
 }
 
+/** Map item_id → { units_per_sheet, wholesale_price_per_sheet } */
+async function buildInvInfoMap(itemIds: string[]): Promise<Map<string, { units_per_sheet: number; wholesale_price_per_sheet: number }>> {
+  if (itemIds.length === 0) return new Map();
+  const docs = await InventoryModel.find({ _id: { $in: itemIds } }, { units_per_sheet: 1, wholesale_price_per_sheet: 1 }).lean();
+  return new Map(docs.map(d => [String(d._id), {
+    units_per_sheet:          (d as any).units_per_sheet          ?? 1,
+    wholesale_price_per_sheet: (d as any).wholesale_price_per_sheet ?? 0,
+  }]));
+}
+
 /**
  * GET /admin/reports/today — live KPIs for the dashboard.
  */
 router.get('/today', async (_req: Request, res: Response) => {
   try {
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const { start, end } = getISTDayBounds();
 
     const [sales, loadings] = await Promise.all([
       SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
@@ -116,9 +138,7 @@ router.get('/item-sales', async (req: Request, res: Response) => {
  */
 router.get('/eod-by-product', async (_req: Request, res: Response) => {
   try {
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const { start, end } = getISTDayBounds();
 
     const [sales, loadings] = await Promise.all([
       SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
@@ -159,21 +179,23 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
 
     // Union of items from globalWithBoy + sold today
     const allItemIds = new Set([...globalWithBoy.keys(), ...soldMap.keys()]);
-    const unitsMap   = await buildUnitsPerSheetMap([...allItemIds]);
+    const invInfoMap = await buildInvInfoMap([...allItemIds]);
 
     const result = [...allItemIds].map(id => {
       const h = globalWithBoy.get(id);
       const todaySold = soldMap.get(id) ?? 0;
       const withBoy   = h?.withBoy ?? 0;
       const names     = soldNames.get(id) ?? { item_name: '', hindi_name: '' };
+      const inv       = invInfoMap.get(id);
       return {
-        item_id:         id,
-        item_name:       h?.item_name  || names.item_name,
-        hindi_name:      h?.hindi_name || names.hindi_name,
-        units_per_sheet: h?.units_per_sheet ?? unitsMap.get(id) ?? 1,
-        opening:         withBoy + todaySold,
-        sold:            todaySold,
-        remaining:       withBoy,
+        item_id:                   id,
+        item_name:                 h?.item_name  || names.item_name,
+        hindi_name:                h?.hindi_name || names.hindi_name,
+        units_per_sheet:           h?.units_per_sheet ?? inv?.units_per_sheet ?? 1,
+        wholesale_price_per_sheet: inv?.wholesale_price_per_sheet ?? 0,
+        opening:                   withBoy + todaySold,
+        sold:                      todaySold,
+        remaining:                 withBoy,
       };
     }).filter(r => r.opening > 0 || r.sold > 0).sort((a, b) => b.sold - a.sold);
 
@@ -186,29 +208,35 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
 
 /**
  * GET /admin/reports/eod — EOD summary across all delivery boys (with names).
+ * Includes boys with today's loadings OR today's sales (handles carryover without new morning assignment).
  */
 router.get('/eod', async (_req: Request, res: Response) => {
   try {
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const { start, end } = getISTDayBounds();
 
-    const loadings = await LoadingModel.find({ date: { $gte: start, $lte: end } });
+    const [loadings, todaySalesAll] = await Promise.all([
+      LoadingModel.find({ date: { $gte: start, $lte: end } }),
+      SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
+    ]);
 
-    const deliveryBoyIds = loadings.map(l => String(l.delivery_boy_id));
-    const users = deliveryBoyIds.length ? await UserModel.find({ _id: { $in: deliveryBoyIds } }).lean() : [];
+    const boyIdSet = new Set<string>([
+      ...loadings.map(l => String(l.delivery_boy_id)),
+      ...todaySalesAll.map(s => String(s.delivery_boy_id)).filter(id => id && id !== 'null'),
+    ]);
+    const allBoyIds = [...boyIdSet];
+
+    if (allBoyIds.length === 0) return res.json([]);
+
+    const users = await UserModel.find({ _id: { $in: allBoyIds } }).lean();
     const userMap = new Map(users.map(u => [String(u._id), u]));
 
     const summary = await Promise.all(
-      loadings.map(async (loading) => {
-        const boyId = String(loading.delivery_boy_id);
-
-        // True running balance (carryover + today's new loading − all sales − returns)
+      allBoyIds.map(async (boyId) => {
         const holdings = await computeHoldings(boyId);
         const withBoyTotal = holdings.reduce((sum, h) => sum + h.withBoy, 0);
 
         const sales = await SaleModel.find({
-          delivery_boy_id: loading.delivery_boy_id,
+          delivery_boy_id: boyId,
           timestamp: { $gte: start, $lte: end },
         });
 
@@ -219,13 +247,12 @@ router.get('/eod', async (_req: Request, res: Response) => {
         const cashCollected = sales.reduce((sum, s) => sum + s.total_amount, 0);
         const user = userMap.get(boyId);
 
-        // Opening = what boy had at START of today = current balance + what was sold today
         const openingStock = Math.round((withBoyTotal + todaySold) * 1000) / 1000;
         const sold         = Math.round(todaySold * 1000) / 1000;
         const remaining    = Math.round(withBoyTotal * 1000) / 1000;
 
         return {
-          delivery_boy_id:   loading.delivery_boy_id,
+          delivery_boy_id:   boyId,
           delivery_boy_name: user?.name || user?.username || boyId,
           openingStock,
           sold,
@@ -235,7 +262,7 @@ router.get('/eod', async (_req: Request, res: Response) => {
       })
     );
 
-    return res.json(summary);
+    return res.json(summary.filter(s => s.openingStock > 0 || s.sold > 0 || s.cashCollected > 0));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });
@@ -333,6 +360,36 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
       year: yearNumber,
       staff,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /admin/reports/daily-sales?month=&year= — Revenue per day for bar chart.
+ */
+router.get('/daily-sales', async (req: Request, res: Response) => {
+  try {
+    const month = req.query['month'] as string | undefined;
+    const year  = req.query['year']  as string | undefined;
+    const { start, end, monthNumber, yearNumber } = resolveMonthRange(month, year);
+
+    const sales = await SaleModel.find({ timestamp: { $gte: start, $lte: end } }).lean();
+
+    const dailyMap = new Map<number, number>();
+    sales.forEach(sale => {
+      const dayIST = new Date((sale.timestamp as Date).getTime() + IST_OFFSET_MS).getUTCDate();
+      dailyMap.set(dayIST, (dailyMap.get(dayIST) ?? 0) + sale.total_amount);
+    });
+
+    const daysInMonth = new Date(Date.UTC(yearNumber, monthNumber + 1, 0)).getUTCDate();
+    const days = Array.from({ length: daysInMonth }, (_, i) => ({
+      day: i + 1,
+      revenue: Math.round((dailyMap.get(i + 1) ?? 0) * 100) / 100,
+    }));
+
+    return res.json(days);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });

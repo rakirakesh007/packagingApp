@@ -25,6 +25,13 @@ interface CartLine {
   sheets: number;
 }
 
+interface ItemGroup {
+  item_name: string;
+  hindi_name: string;
+  category: string;
+  variants: CatalogItem[];
+}
+
 @Component({
   selector: 'app-customer-store',
   standalone: true,
@@ -53,6 +60,7 @@ export class CustomerStorePage implements OnInit {
   ownerWaUrl        = signal<string | null>(null);
   formError         = signal('');
   detectingLocation = signal(false);
+  activeGroup       = signal<ItemGroup | null>(null);
 
   constructor() {
     // Persist cart + language whenever they change.
@@ -76,10 +84,15 @@ export class CustomerStorePage implements OnInit {
     if (this.lang() === 'hi') return item.hindi_name ? item.item_name : '';
     return item.item_name && item.hindi_name ? item.hindi_name : '';
   }
-  /** Differentiates same-name variants (e.g. ₹5 vs ₹10 packets): shows MRP pack size. */
-  variant(item: CatalogItem): string {
-    return item.mrp_per_unit ? `₹${item.mrp_per_unit} ${this.t('pack')}` : '';
+  /** Variant label: variant_name → quantity_per_unit+'g' → mrp_per_unit fallback. */
+  variantLabel(item: CatalogItem): string {
+    if (item.variant_name) return item.variant_name;
+    if (item.quantity_per_unit) return `${item.quantity_per_unit}g`;
+    if (item.mrp_per_unit) return `₹${item.mrp_per_unit}/pkt`;
+    return '';
   }
+
+  variant(item: CatalogItem): string { return this.variantLabel(item); }
 
   // ── Category tabs ─────────────────────────────────────────────────────────
   readonly catDefs = [
@@ -99,12 +112,16 @@ export class CustomerStorePage implements OnInit {
   isSearching = computed(() => this.searchQuery().trim().length > 0);
 
   categoryCount = computed(() => {
-    const map = new Map<string, number>();
+    // Count unique product names per category (variants of same name = 1 product)
+    const groups = new Map<string, Set<string>>();
     for (const item of this.catalog()) {
       const cat = item.category || '';
-      map.set(cat, (map.get(cat) ?? 0) + 1);
+      if (!groups.has(cat)) groups.set(cat, new Set());
+      groups.get(cat)!.add(item.item_name.toLowerCase().trim());
     }
-    return map;
+    const result = new Map<string, number>();
+    groups.forEach((names, cat) => result.set(cat, names.size));
+    return result;
   });
 
   countFor(catName: string): number {
@@ -127,6 +144,34 @@ export class CustomerStorePage implements OnInit {
   selectedCategoryDef = computed(() =>
     this.catDefs.find((c) => c.name === this.selectedCategory())
   );
+
+  groupedItems = computed<ItemGroup[]>(() => {
+    const order = new Map<string, ItemGroup>();
+    for (const item of this.activeItems()) {
+      const key = item.item_name.toLowerCase().trim();
+      if (!order.has(key)) {
+        order.set(key, { item_name: item.item_name, hindi_name: item.hindi_name, category: item.category, variants: [] });
+      }
+      order.get(key)!.variants.push(item);
+    }
+    return [...order.values()];
+  });
+
+  groupInCart(group: ItemGroup): boolean {
+    return group.variants.some(v => (this.cart().get(v.id) ?? 0) > 0);
+  }
+
+  groupCartQty(group: ItemGroup): number {
+    return group.variants.reduce((sum, v) => sum + (this.cart().get(v.id) ?? 0), 0);
+  }
+
+  openSheet(group: ItemGroup): void {
+    this.activeGroup.set(group);
+  }
+
+  closeSheet(): void {
+    this.activeGroup.set(null);
+  }
 
   cartCount = computed(() => {
     let n = 0;

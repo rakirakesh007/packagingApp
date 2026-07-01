@@ -72,7 +72,7 @@
         <thead class="bg-gray-50">
           <tr>
             <th class="px-4 py-3 text-left font-semibold text-gray-600 w-8">#</th>
-            <th class="px-4 py-3 text-left font-semibold text-gray-600">Item Name</th>
+            <th class="px-4 py-3 text-left font-semibold text-gray-600">Variant / Size</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600" title="Free to load = total stock − stock already with delivery boys">Available Stock</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600">Sheet Price (₹)</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600 w-32">Assign Qty</th>
@@ -80,40 +80,66 @@
         </thead>
 
         <tbody formArrayName="rows" class="divide-y divide-gray-100 bg-white">
-          @for (i of filteredIndices(); track i) {
-            <tr
-              [formGroupName]="i"
-              class="hover:bg-blue-50 transition-colors"
-              [class.bg-blue-50]="rows.at(i).get('assignedQty')?.value > 0"
-            >
-              <td class="px-4 py-2 text-gray-400 text-xs">{{ i + 1 }}</td>
-              <td class="px-4 py-2 font-medium text-gray-800">
-                <div>{{ rows.at(i).get('hindi_name')?.value || rows.at(i).get('item_name')?.value }}</div>
-                @if (rows.at(i).get('hindi_name')?.value) {
-                  <div class="text-xs text-gray-500">({{ rows.at(i).get('item_name')?.value }})</div>
-                }
-              </td>
-              <td class="px-4 py-2 text-right text-gray-600">{{ rows.at(i).get('warehouse_stock')?.value }}</td>
-              <td class="px-4 py-2 text-right text-gray-600">₹{{ (rows.at(i).get('wholesale_price_per_sheet')?.value * rows.at(i).get('units_per_sheet')?.value) | number:'1.0-0' }}/sheet</td>
-              <td class="px-4 py-2 text-right">
-                <input
-                  type="number"
-                  formControlName="assignedQty"
-                  class="qty-input w-24 rounded border px-2 py-1 text-right text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  [class.border-red-400]="rows.at(i).get('assignedQty')?.invalid && rows.at(i).get('assignedQty')?.touched"
-                  [class.border-gray-300]="!rows.at(i).get('assignedQty')?.invalid || !rows.at(i).get('assignedQty')?.touched"
-                  min="0"
-                  [max]="rows.at(i).get('warehouse_stock')?.value"
-                  (keydown.enter)="onEnter($event, i)"
-                  (focus)="$any($event.target).select()"
-                />
-                @if (rows.at(i).get('assignedQty')?.hasError('max')) {
-                  <div class="text-red-500 text-xs mt-0.5 text-right">
-                    Max {{ rows.at(i).get('warehouse_stock')?.value }}
-                  </div>
-                }
+          @for (group of groupedRows(); track group.name) {
+            <!-- ── Group header ── -->
+            <tr class="bg-gray-50 border-b border-gray-300 cursor-pointer select-none" (click)="toggleGroup(group.name)">
+              <td colspan="5" class="px-4 py-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-400 text-xs w-3">{{ isExpanded(group.name) ? '▼' : '▶' }}</span>
+                  <span class="font-bold text-gray-800">{{ group.hindi_name || group.name }}</span>
+                  @if (group.hindi_name) {
+                    <span class="text-xs text-gray-400">({{ group.name }})</span>
+                  }
+                  <span class="text-xs text-gray-400 bg-gray-200 rounded-full px-2 py-0.5">
+                    {{ group.indices.length }} variant{{ group.indices.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
               </td>
             </tr>
+            <!-- ── Variant rows (shown when expanded or searching) ── -->
+            @if (isExpanded(group.name) || searchQuery()) {
+              @for (i of group.indices; track i) {
+                <tr
+                  [formGroupName]="i"
+                  class="hover:bg-blue-50 transition-colors"
+                  [class.bg-blue-50]="rows.at(i).get('assignedQty')?.value > 0"
+                >
+                  <td class="px-4 py-2 text-gray-400 text-xs pl-8">{{ i + 1 }}</td>
+                  <td class="px-4 py-2 pl-8">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-medium text-gray-800">{{ rows.at(i).get('variant_name')?.value || '—' }}</span>
+                      <span class="text-xs rounded px-1.5 py-0.5 font-semibold"
+                        [class.bg-blue-100]="rows.at(i).get('sale_mode')?.value !== 'packet'"
+                        [class.text-blue-700]="rows.at(i).get('sale_mode')?.value !== 'packet'"
+                        [class.bg-purple-100]="rows.at(i).get('sale_mode')?.value === 'packet'"
+                        [class.text-purple-700]="rows.at(i).get('sale_mode')?.value === 'packet'">
+                        {{ rows.at(i).get('sale_mode')?.value === 'packet' ? 'Pkt' : 'Sheet' }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-2 text-right text-gray-600">{{ rows.at(i).get('warehouse_stock')?.value }}</td>
+                  <td class="px-4 py-2 text-right text-gray-600">₹{{ (rows.at(i).get('wholesale_price_per_sheet')?.value * rows.at(i).get('units_per_sheet')?.value) | number:'1.0-0' }}/sheet</td>
+                  <td class="px-4 py-2 text-right">
+                    <input
+                      type="number"
+                      formControlName="assignedQty"
+                      class="qty-input w-24 rounded border px-2 py-1 text-right text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      [class.border-red-400]="rows.at(i).get('assignedQty')?.invalid && rows.at(i).get('assignedQty')?.touched"
+                      [class.border-gray-300]="!rows.at(i).get('assignedQty')?.invalid || !rows.at(i).get('assignedQty')?.touched"
+                      min="0"
+                      [max]="rows.at(i).get('warehouse_stock')?.value"
+                      (keydown.enter)="onEnter($event, i)"
+                      (focus)="$any($event.target).select()"
+                    />
+                    @if (rows.at(i).get('assignedQty')?.hasError('max')) {
+                      <div class="text-red-500 text-xs mt-0.5 text-right">
+                        Max {{ rows.at(i).get('warehouse_stock')?.value }}
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            }
           } @empty {
             <tr>
               <td colspan="5" class="px-4 py-10 text-center text-gray-400">
@@ -182,6 +208,9 @@
                   <div>{{ h.hindi_name || h.item_name }}</div>
                   @if (h.hindi_name) {
                     <div class="text-xs text-gray-500">({{ h.item_name }})</div>
+                  }
+                  @if (h.variant_name) {
+                    <div class="text-xs text-gray-400">{{ h.variant_name }}</div>
                   }
                   <div class="text-xs text-indigo-600 font-semibold">
                     ₹{{ h.wholesale_price_per_sheet * h.units_per_sheet }}/sheet

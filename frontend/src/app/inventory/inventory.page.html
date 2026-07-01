@@ -25,14 +25,13 @@
     />
   </div>
 
-  <!-- Inventory Table -->
+  <!-- Inventory Table — accordion grouped by product name -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-gray-100 border-b-2 border-gray-200">
           <tr class="text-left">
-            <th class="px-4 py-3 font-semibold text-gray-700">Item Name</th>
-            <th class="px-4 py-3 font-semibold text-gray-700">Hindi Name</th>
+            <th class="px-4 py-3 font-semibold text-gray-700">Variant / Size</th>
             <th class="px-4 py-3 font-semibold text-gray-700" title="Total sheets owned in the warehouse">Stock</th>
             <th class="px-4 py-3 font-semibold text-gray-700" title="Free to assign = Stock − sheets loaded on delivery boys">Available</th>
             <th class="px-4 py-3 font-semibold text-gray-700">MRP</th>
@@ -41,81 +40,79 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of filteredItems(); track item.id; let i = $index) {
-            <tr
-              class="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-              [class.bg-red-50]="item.total_stock <= item.low_stock_threshold"
-            >
-              <td class="px-4 py-3 font-medium text-gray-900">
-                {{ item.item_name }}
-                @if (item.description) {
-                  <p class="text-xs text-gray-500">{{ item.description }}</p>
-                }
-              </td>
-              <td class="px-4 py-3 text-gray-700">{{ item.hindi_name || '—' }}</td>
-              <td class="px-4 py-3 text-gray-700">
-                <span class="font-semibold">{{ item.total_stock | sheetQty:item.units_per_sheet }}</span>
-                @if (item.total_stock <= item.low_stock_threshold) {
-                  <span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-semibold">Low Stock</span>
-                }
-              </td>
-              <td class="px-4 py-3 text-gray-700">{{ (item.total_stock - (item.reserved_stock ?? 0)) | sheetQty:item.units_per_sheet }}</td>
-              <td class="px-4 py-3 text-gray-700">
-                @if (item.mrp_per_unit) {
-                  ₹{{ item.mrp_per_unit }}
-                } @else {
-                  —
-                }
-              </td>
-              <td class="px-4 py-3 text-gray-700 font-semibold">₹{{ item.wholesale_price_per_sheet }}</td>
-              <td class="px-4 py-3">
-                @if (isAdmin()) {
-                  <div class="flex gap-1 justify-center flex-wrap">
-                    <button
-                      (click)="toggleInStock(item)"
-                      [ngClass]="(item.in_stock ?? true)
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'"
-                      class="text-xs px-2 py-1 rounded font-semibold"
-                      [title]="(item.in_stock ?? true) ? 'In Stock — click to mark Out of Stock' : 'Out of Stock — click to mark In Stock'"
-                    >
-                      {{ (item.in_stock ?? true) ? '✓' : '✗' }}
-                    </button>
-                    <button
-                      (click)="downloadLabelSheet([item])"
-                      class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold"
-                      title="Download Labels"
-                    >
-                      ⬇️
-                    </button>
-                    <button
-                      (click)="duplicateItem(item)"
-                      class="bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs px-2 py-1 rounded font-semibold"
-                      title="Duplicate (pre-fill Add form)"
-                    >
-                      📋
-                    </button>
-                    <button
-                      (click)="openEditModal(item)"
-                      class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs px-2 py-1 rounded font-semibold"
-                      title="Edit"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      (click)="deleteItem(item)"
-                      class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-2 py-1 rounded font-semibold"
-                      title="Delete"
-                    >
-                      🗑️
-                    </button>
+          @for (group of groupedInventory(); track group.name) {
+            <!-- ── Group header row ── -->
+            <tr class="bg-gray-50 border-b border-gray-300 cursor-pointer select-none" (click)="toggleGroup(group.name)">
+              <td colspan="6" class="px-4 py-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-gray-400 text-xs w-4 text-center inline-block">{{ isExpanded(group.name) ? '▼' : '▶' }}</span>
+                    <span class="font-bold text-gray-900">{{ group.hindi_name || group.name }}</span>
+                    @if (group.hindi_name) {
+                      <span class="text-xs text-gray-400">({{ group.name }})</span>
+                    }
+                    <span class="text-xs text-gray-400 bg-gray-200 rounded-full px-2 py-0.5">{{ group.items.length }} variant{{ group.items.length !== 1 ? 's' : '' }}</span>
                   </div>
-                }
+                  @if (isAdmin()) {
+                    <button
+                      type="button"
+                      class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-full font-semibold"
+                      (click)="$event.stopPropagation(); openAddVariant(group)"
+                    >+ Add Variant</button>
+                  }
+                </div>
               </td>
             </tr>
+            <!-- ── Variant sub-rows (visible when expanded) ── -->
+            @if (isExpanded(group.name)) {
+              @for (item of group.items; track item.id) {
+                <tr
+                  class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  [class.bg-red-50]="item.total_stock <= item.low_stock_threshold"
+                >
+                  <td class="px-4 py-2.5 pl-9">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-medium text-gray-800">{{ item.variant_name || '—' }}</span>
+                      <span class="text-xs rounded px-1.5 py-0.5 font-semibold"
+                        [class.bg-blue-100]="(item.sale_mode ?? 'sheet') !== 'packet'"
+                        [class.text-blue-700]="(item.sale_mode ?? 'sheet') !== 'packet'"
+                        [class.bg-purple-100]="item.sale_mode === 'packet'"
+                        [class.text-purple-700]="item.sale_mode === 'packet'">
+                        {{ item.sale_mode === 'packet' ? 'Pkt' : 'Sheet' }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-2.5 text-gray-700">
+                    <span class="font-semibold">{{ item.total_stock | sheetQty:item.units_per_sheet }}</span>
+                    @if (item.total_stock <= item.low_stock_threshold) {
+                      <span class="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">Low</span>
+                    }
+                  </td>
+                  <td class="px-4 py-2.5 text-gray-700">{{ (item.total_stock - (item.reserved_stock ?? 0)) | sheetQty:item.units_per_sheet }}</td>
+                  <td class="px-4 py-2.5 text-gray-700">{{ item.mrp_per_unit ? '₹' + item.mrp_per_unit : '—' }}</td>
+                  <td class="px-4 py-2.5 text-gray-700 font-semibold">₹{{ item.wholesale_price_per_sheet }}</td>
+                  <td class="px-4 py-2.5">
+                    @if (isAdmin()) {
+                      <div class="flex gap-1 justify-center flex-wrap">
+                        <button
+                          (click)="toggleInStock(item)"
+                          [ngClass]="(item.in_stock ?? true) ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'"
+                          class="text-xs px-2 py-1 rounded font-semibold"
+                          [title]="(item.in_stock ?? true) ? 'In Stock — click to mark Out of Stock' : 'Out of Stock — click to mark In Stock'"
+                        >{{ (item.in_stock ?? true) ? '✓' : '✗' }}</button>
+                        <button (click)="downloadLabelSheet([item])" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold" title="Download Labels">⬇️</button>
+                        <button (click)="duplicateItem(item)" class="bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs px-2 py-1 rounded font-semibold" title="Duplicate">📋</button>
+                        <button (click)="openEditModal(item)" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs px-2 py-1 rounded font-semibold" title="Edit">✏️</button>
+                        <button (click)="deleteItem(item)" class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-2 py-1 rounded font-semibold" title="Delete">🗑️</button>
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            }
           } @empty {
             <tr>
-              <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                 @if (searchQuery()) {
                   No items match your search.
                 } @else {
@@ -135,99 +132,157 @@
         <div class="flex items-start justify-between gap-4 mb-5">
           <div>
             <h2 class="text-2xl font-bold text-gray-900">
-              {{ modalMode() === 'edit' ? 'Edit Item' : 'Add Item' }}
+              @if (modalMode() === 'edit') {
+                Edit Item
+              } @else if (formStep() === 'base') {
+                Add Item — Step 1: Product Info
+              } @else {
+                Add Item — Step 2: Variant Details
+              }
             </h2>
-            <p class="text-sm text-gray-500">Update retail details, pricing, and stock in one place.</p>
+            @if (modalMode() === 'add' && formStep() === 'base') {
+              <p class="text-sm text-gray-500">Enter the product name and category. You'll add size/pricing in the next step.</p>
+            } @else if (modalMode() === 'add' && formStep() === 'variant') {
+              <p class="text-sm text-gray-500">
+                Adding variant for <strong>{{ formHindiName || formItemName }}</strong>
+                @if (formHindiName) { <span class="text-gray-400">({{ formItemName }})</span> }
+              </p>
+            } @else {
+              <p class="text-sm text-gray-500">Update retail details, pricing, and stock.</p>
+            }
           </div>
           <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none" (click)="closeItemModal()">&times;</button>
         </div>
 
         <form (ngSubmit)="addItem()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label class="block md:col-span-2">
-            <span class="block text-sm font-medium text-gray-700 mb-1">English Name *</span>
-            <input [(ngModel)]="formItemName" name="formItemName" class="w-full border rounded-lg p-3" placeholder="Item name" required />
-          </label>
 
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Hindi Name</span>
-            <input [(ngModel)]="formHindiName" name="formHindiName" class="w-full border rounded-lg p-3" placeholder="जीरा" />
-          </label>
+          <!-- ── Step 1 / Edit: Base product fields ── -->
+          @if (formStep() === 'base' || modalMode() === 'edit') {
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">English Name *</span>
+              <input [(ngModel)]="formItemName" name="formItemName" class="w-full border rounded-lg p-3" placeholder="Item name" required />
+            </label>
 
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Description</span>
-            <input [(ngModel)]="formDescription" name="formDescription" class="w-full border rounded-lg p-3" placeholder="Quality / origin / notes" />
-          </label>
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Hindi Name</span>
+              <input [(ngModel)]="formHindiName" name="formHindiName" class="w-full border rounded-lg p-3" placeholder="जीरा" />
+            </label>
 
-          <label class="block md:col-span-2">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Ingredients <span class="text-gray-400 font-normal">(comma-separated)</span></span>
-            <input [(ngModel)]="formIngredients" name="formIngredients" class="w-full border rounded-lg p-3" placeholder="e.g. Coriander, Salt, Red Chilli, Turmeric" />
-          </label>
+            <label class="block md:col-span-2">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Ingredients <span class="text-gray-400 font-normal">(comma-separated)</span></span>
+              <input [(ngModel)]="formIngredients" name="formIngredients" class="w-full border rounded-lg p-3" placeholder="e.g. Coriander, Salt, Red Chilli, Turmeric" />
+            </label>
 
-          <label class="block md:col-span-2">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Search Keywords <span class="text-gray-400 font-normal">(alternate / romanized names for search)</span></span>
-            <input [(ngModel)]="formSearchAliases" name="formSearchAliases" class="w-full border rounded-lg p-3" placeholder="e.g. methi, fenugreek seeds, सौंफ fennel" />
-          </label>
+            <label class="block md:col-span-2">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Search Keywords <span class="text-gray-400 font-normal">(alternate / romanized names)</span></span>
+              <input [(ngModel)]="formSearchAliases" name="formSearchAliases" class="w-full border rounded-lg p-3" placeholder="e.g. methi, fenugreek seeds, सौंफ fennel" />
+            </label>
 
-          <label class="block md:col-span-2">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Category</span>
-            <select [(ngModel)]="formCategory" name="formCategory" class="w-full border rounded-lg p-3 bg-white">
-              <option value="">— Select category —</option>
-              @for (cat of categories; track cat.name) {
-                <option [value]="cat.name">{{ cat.name }} ({{ cat.hindi_name }})</option>
+            <label class="block md:col-span-2">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Category</span>
+              <select [(ngModel)]="formCategory" name="formCategory" class="w-full border rounded-lg p-3 bg-white">
+                <option value="">— Select category —</option>
+                @for (cat of categories; track cat.name) {
+                  <option [value]="cat.name">{{ cat.name }} ({{ cat.hindi_name }})</option>
+                }
+              </select>
+            </label>
+          }
+
+          <!-- ── Step 2 / Edit: Variant-specific fields ── -->
+          @if (formStep() === 'variant' || modalMode() === 'edit') {
+            @if (modalMode() === 'edit') {
+              <div class="md:col-span-2 border-t pt-4 mt-1">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Variant Details</p>
+              </div>
+            }
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Variant / Size <span class="text-gray-400 font-normal">(optional)</span></span>
+              <input [(ngModel)]="formVariantName" name="formVariantName" class="w-full border rounded-lg p-3" placeholder="e.g. 50g, 100g Pack, 1kg" />
+            </label>
+
+            <div class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Sale Mode</span>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="formSaleMode = 'sheet'"
+                  [ngClass]="formSaleMode === 'sheet' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'"
+                  class="px-4 py-2 rounded-lg font-semibold text-sm border"
+                >Sheet</button>
+                <button
+                  type="button"
+                  (click)="formSaleMode = 'packet'"
+                  [ngClass]="formSaleMode === 'packet' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'"
+                  class="px-4 py-2 rounded-lg font-semibold text-sm border"
+                >Packet</button>
+              </div>
+            </div>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Description</span>
+              <input [(ngModel)]="formDescription" name="formDescription" class="w-full border rounded-lg p-3" placeholder="Quality / origin / notes" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Stock <span class="text-gray-400 font-normal">(sheets)</span></span>
+              <input [(ngModel)]="formStock" name="formStock" type="number" class="w-full border rounded-lg p-3" min="0" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Units per Sheet</span>
+              <input [(ngModel)]="formUnitsPerSheet" name="formUnitsPerSheet" type="number" class="w-full border rounded-lg p-3" min="1" placeholder="e.g. 10 or 12" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Quantity/unit (grams)</span>
+              <input [(ngModel)]="formQuantityPerUnit" name="formQuantityPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="e.g. 100" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">MRP/unit (&#x20B9;)</span>
+              <input [(ngModel)]="formMrpPerUnit" name="formMrpPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="Printed MRP on packet" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Wholesale Price / Sheet (&#x20B9;)</span>
+              <input [(ngModel)]="formWholesalePricePerSheet" name="formWholesalePricePerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</span>
+              <input [(ngModel)]="formThreshold" name="formThreshold" type="number" class="w-full border rounded-lg p-3" min="0" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Availability</span>
+              <button
+                type="button"
+                (click)="formInStock = !formInStock"
+                [ngClass]="formInStock ? 'bg-green-100 text-green-700 border-green-300' : 'bg-gray-100 text-gray-500 border-gray-300'"
+                class="px-5 py-2 rounded-lg font-semibold text-sm border"
+              >{{ formInStock ? '✓ In Stock' : '✗ Out of Stock' }}</button>
+            </label>
+          }
+
+          <!-- ── Footer buttons ── -->
+          <div class="md:col-span-2 flex justify-between gap-3 pt-2">
+            <div class="flex gap-2">
+              <button type="button" class="px-5 py-2.5 rounded-lg border font-semibold text-gray-700" (click)="closeItemModal()">Cancel</button>
+              @if (formStep() === 'variant' && modalMode() === 'add') {
+                <button type="button" class="px-5 py-2.5 rounded-lg border font-semibold text-gray-600" (click)="formStep.set('base')">← Back</button>
               }
-            </select>
-          </label>
-
-          <label class="block md:col-span-2">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Availability</span>
-            <button
-              type="button"
-              (click)="formInStock = !formInStock"
-              [ngClass]="formInStock
-                ? 'bg-green-100 text-green-700 border-green-300'
-                : 'bg-gray-100 text-gray-500 border-gray-300'"
-              class="px-5 py-2 rounded-lg font-semibold text-sm border"
-            >
-              {{ formInStock ? '✓ In Stock' : '✗ Out of Stock' }}
-            </button>
-          </label>
-
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Stock <span class="text-gray-400 font-normal">(sheets)</span></span>
-            <input [(ngModel)]="formStock" name="formStock" type="number" class="w-full border rounded-lg p-3" min="0" />
-          </label>
-
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Units per Sheet</span>
-            <input [(ngModel)]="formUnitsPerSheet" name="formUnitsPerSheet" type="number" class="w-full border rounded-lg p-3" min="1" placeholder="e.g. 10 or 12" />
-          </label>
-
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Quantity/unit (grams)</span>
-            <input [(ngModel)]="formQuantityPerUnit" name="formQuantityPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="e.g. 100" />
-          </label>
-
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">MRP/unit (&#x20B9;)</span>
-            <input [(ngModel)]="formMrpPerUnit" name="formMrpPerUnit" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="Printed MRP on packet" />
-          </label>
-
-          <label class="block">
-
-            <span class="block text-sm font-medium text-gray-700 mb-1">Wholesale Price / Sheet (&#x20B9;)</span>
-            <input [(ngModel)]="formWholesalePricePerSheet" name="formWholesalePricePerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
-          </label>
-
-          <label class="block">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</span>
-            <input [(ngModel)]="formThreshold" name="formThreshold" type="number" class="w-full border rounded-lg p-3" min="0" />
-          </label>
-
-          <div class="md:col-span-2 flex justify-end gap-3 pt-2">
-            <button type="button" class="px-5 py-2.5 rounded-lg border font-semibold text-gray-700" (click)="closeItemModal()">Cancel</button>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold">
-              {{ modalMode() === 'edit' ? 'Save Changes' : 'Create Item' }}
-            </button>
+            </div>
+            @if (formStep() === 'base' && modalMode() === 'add') {
+              <button type="button" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold" (click)="formStep.set('variant')">
+                Next: Add Variant →
+              </button>
+            } @else {
+              <button type="submit" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                {{ modalMode() === 'edit' ? 'Save Changes' : 'Create Item' }}
+              </button>
+            }
           </div>
         </form>
       </div>

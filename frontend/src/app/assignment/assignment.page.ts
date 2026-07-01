@@ -51,7 +51,7 @@ export class AssignmentPage implements OnInit {
   // ── Search ────────────────────────────────────────────────────────────────
   searchQuery = signal('');
   // rowNames is a Signal so computed() can track it when inventory reloads.
-  private rowNames = signal<{ item_name: string; hindi_name: string; search_aliases: string }[]>([]);
+  private rowNames = signal<{ item_name: string; hindi_name: string; search_aliases: string; variant_name: string; sale_mode: string }[]>([]);
 
   filteredIndices = computed(() => {
     const q     = this.searchQuery().toLowerCase().trim();
@@ -62,10 +62,42 @@ export class AssignmentPage implements OnInit {
       .filter(({ n }) =>
         n.item_name.toLowerCase().includes(q) ||
         n.hindi_name.toLowerCase().includes(q) ||
-        n.search_aliases.toLowerCase().includes(q)
+        n.search_aliases.toLowerCase().includes(q) ||
+        n.variant_name.toLowerCase().includes(q)
       )
       .map(({ i }) => i);
   });
+
+  // ── Accordion grouping ────────────────────────────────────────────────────
+  groupedRows = computed<{ name: string; hindi_name: string; indices: number[] }[]>(() => {
+    const names = this.rowNames();
+    const order = new Map<string, { name: string; hindi_name: string; indices: number[] }>();
+    for (const i of this.filteredIndices()) {
+      const n = names[i];
+      if (!n) continue;
+      const key = n.item_name.toLowerCase().trim();
+      if (!order.has(key)) {
+        order.set(key, { name: n.item_name, hindi_name: n.hindi_name, indices: [] });
+      }
+      order.get(key)!.indices.push(i);
+    }
+    return [...order.values()];
+  });
+
+  expandedGroups = signal<Set<string>>(new Set());
+
+  toggleGroup(name: string): void {
+    this.expandedGroups.update((set) => {
+      const next = new Set(set);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  isExpanded(name: string): boolean {
+    return this.expandedGroups().has(name);
+  }
 
   // ── Current Load (running balance) ─────────────────────────────────────────
   holdings  = signal<Holding[]>([]);
@@ -124,6 +156,8 @@ export class AssignmentPage implements OnInit {
         item_id:         [item.id],
         item_name:       [item.item_name],
         hindi_name:      [item.hindi_name ?? ''],
+        variant_name:    [item.variant_name ?? ''],
+        sale_mode:       [item.sale_mode ?? 'sheet'],
         mrp_per_unit:    [item.mrp_per_unit ?? 0],
         wholesale_price_per_sheet: [item.wholesale_price_per_sheet ?? 0],
         units_per_sheet: [item.units_per_sheet ?? 12],
@@ -132,7 +166,7 @@ export class AssignmentPage implements OnInit {
       }));
     }
     // Set rowNames after FormArray is fully populated so filteredIndices is always in sync.
-    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '', search_aliases: i.search_aliases ?? '' })));
+    this.rowNames.set(items.map(i => ({ item_name: i.item_name, hindi_name: i.hindi_name ?? '', search_aliases: i.search_aliases ?? '', variant_name: i.variant_name ?? '', sale_mode: i.sale_mode ?? 'sheet' })));
     this.recalcTotals();
   }
 
@@ -228,10 +262,10 @@ export class AssignmentPage implements OnInit {
     }
 
     const items = (this.rows.value as {
-      item_id: string; item_name: string; hindi_name: string; wholesale_price_per_sheet: number; warehouse_stock: number; assignedQty: number;
+      item_id: string; item_name: string; hindi_name: string; variant_name: string; wholesale_price_per_sheet: number; warehouse_stock: number; assignedQty: number;
     }[])
       .filter((r) => Number(r.assignedQty) > 0)
-      .map((r) => ({ item_id: r.item_id, qty: Number(r.assignedQty), item_name: r.item_name, hindi_name: r.hindi_name, wholesale_price_per_sheet: r.wholesale_price_per_sheet }));
+      .map((r) => ({ item_id: r.item_id, qty: Number(r.assignedQty), item_name: r.item_name, hindi_name: r.hindi_name, variant_name: r.variant_name, wholesale_price_per_sheet: r.wholesale_price_per_sheet }));
 
     if (items.length === 0) {
       this.submitError.set('Please assign at least one item.');

@@ -18,5 +18,7 @@ export interface InventoryItem {
   ingredients?: string;
   search_aliases?: string;
   category?: string;
+  variant_name?: string;
+  sale_mode?: 'sheet' | 'packet';
   in_stock?: boolean;
 }

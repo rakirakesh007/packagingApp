@@ -7,6 +7,7 @@ export type Holding = {
   item_id: string;
   item_name: string;
   hindi_name: string;
+  variant_name: string;
   units_per_sheet: number;
   mrp_per_unit: number;
   wholesale_price_per_sheet: number;
@@ -31,7 +32,7 @@ export async function computeHoldings(deliveryBoyId: string): Promise<Holding[]>
   const ensure = (id: string): Holding => {
     let h = map.get(id);
     if (!h) {
-      h = { item_id: id, item_name: '', hindi_name: '', units_per_sheet: 1, mrp_per_unit: 0, wholesale_price_per_sheet: 0, assigned: 0, sold: 0, returned: 0, withBoy: 0 };
+      h = { item_id: id, item_name: '', hindi_name: '', variant_name: '', units_per_sheet: 1, mrp_per_unit: 0, wholesale_price_per_sheet: 0, assigned: 0, sold: 0, returned: 0, withBoy: 0 };
       map.set(id, h);
     }
     return h;
@@ -41,8 +42,9 @@ export async function computeHoldings(deliveryBoyId: string): Promise<Holding[]>
     for (const it of (l.items as any[])) {
       const h = ensure(String(it.item_id));
       h.assigned += Number(it.qty) || 0;
-      if (it.item_name)  h.item_name  = String(it.item_name);
-      if (it.hindi_name) h.hindi_name = String(it.hindi_name);
+      if (it.item_name)   h.item_name   = String(it.item_name);
+      if (it.hindi_name)  h.hindi_name  = String(it.hindi_name);
+      if (it.variant_name !== undefined) h.variant_name = String(it.variant_name ?? '');
     }
   }
   for (const s of sales) {
@@ -58,7 +60,7 @@ export async function computeHoldings(deliveryBoyId: string): Promise<Holding[]>
   if (ids.length) {
     const invDocs = await InventoryModel.find(
       { _id: { $in: ids } },
-      { units_per_sheet: 1, mrp_per_unit: 1, wholesale_price_per_sheet: 1, item_name: 1, hindi_name: 1 }
+      { units_per_sheet: 1, mrp_per_unit: 1, wholesale_price_per_sheet: 1, item_name: 1, hindi_name: 1, variant_name: 1 }
     ).lean();
     for (const inv of invDocs) {
       const h = map.get(String(inv._id));
@@ -66,8 +68,9 @@ export async function computeHoldings(deliveryBoyId: string): Promise<Holding[]>
       h.units_per_sheet          = (inv as any).units_per_sheet          ?? 1;
       h.mrp_per_unit             = (inv as any).mrp_per_unit             ?? 0;
       h.wholesale_price_per_sheet = (inv as any).wholesale_price_per_sheet ?? 0;
-      if (!h.item_name)  h.item_name  = (inv as any).item_name  ?? '';
-      if (!h.hindi_name) h.hindi_name = (inv as any).hindi_name ?? '';
+      if (!h.item_name)    h.item_name    = (inv as any).item_name    ?? '';
+      if (!h.hindi_name)   h.hindi_name   = (inv as any).hindi_name   ?? '';
+      if (!h.variant_name) h.variant_name = (inv as any).variant_name ?? '';
     }
   }
 

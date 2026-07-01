@@ -15,6 +15,7 @@ export interface Holding {
   item_id: string;
   item_name: string;
   hindi_name: string;
+  variant_name: string;
   units_per_sheet: number;
   mrp_per_unit: number;
   wholesale_price_per_sheet: number;

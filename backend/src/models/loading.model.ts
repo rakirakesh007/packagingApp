@@ -9,6 +9,7 @@ const loadingItemSchema = new Schema(
     hindi_name: { type: String, default: '' },
     // wholesale_price_per_sheet: denormalized from Inventory.wholesale_price_per_sheet at assignment time
     wholesale_price_per_sheet: { type: Number, default: 0 },
+    variant_name: { type: String, default: '' },
   },
   { _id: false }
 );

@@ -23,6 +23,12 @@ export interface CartItem {
   selling_price_per_sheet: number;
 }
 
+interface SalesGroup {
+  item_name: string;
+  hindi_name: string;
+  variants: InventoryItem[];
+}
+
 @Component({
   selector: 'app-sales-cart',
   standalone: true,
@@ -62,6 +68,36 @@ export class SalesCartPage implements OnInit {
         )
       : this.allItems();
   });
+
+  groupedItems = computed<SalesGroup[]>(() => {
+    const order = new Map<string, SalesGroup>();
+    for (const item of this.filteredItems()) {
+      const key = item.item_name.toLowerCase().trim();
+      if (!order.has(key)) {
+        order.set(key, { item_name: item.item_name, hindi_name: item.hindi_name ?? '', variants: [] });
+      }
+      order.get(key)!.variants.push(item);
+    }
+    return [...order.values()];
+  });
+
+  expandedGroups = signal<Set<string>>(new Set());
+
+  toggleGroup(name: string): void {
+    this.expandedGroups.update((s) => {
+      const n = new Set(s);
+      if (n.has(name)) n.delete(name); else n.add(name);
+      return n;
+    });
+  }
+
+  isExpanded(name: string): boolean {
+    return this.expandedGroups().has(name);
+  }
+
+  groupCartQty(group: SalesGroup): number {
+    return group.variants.reduce((sum, v) => sum + this.getQty(v.id), 0);
+  }
 
   cartCount = computed(() => {
     let n = 0;
@@ -110,6 +146,8 @@ export class SalesCartPage implements OnInit {
           id:                        h.item_id,
           item_name:                 h.item_name,
           hindi_name:                h.hindi_name,
+          variant_name:              h.variant_name,
+          sale_mode:                 catalogMap.get(h.item_id)?.sale_mode ?? 'sheet',
           wholesale_price_per_sheet: catalogMap.get(h.item_id)?.wholesale_price_per_sheet ?? 0,
           total_stock:               h.withBoy,
           units_per_sheet:           h.units_per_sheet,
@@ -224,6 +262,8 @@ export class SalesCartPage implements OnInit {
                   id:                        h.item_id,
                   item_name:                 h.item_name,
                   hindi_name:                h.hindi_name,
+                  variant_name:              h.variant_name,
+                  sale_mode:                 catalogMap.get(h.item_id)?.sale_mode ?? 'sheet',
                   wholesale_price_per_sheet: catalogMap.get(h.item_id)?.wholesale_price_per_sheet ?? 0,
                   total_stock:               h.withBoy,
                   units_per_sheet:           h.units_per_sheet,
