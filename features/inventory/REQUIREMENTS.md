@@ -20,7 +20,7 @@ Allow admins to manage the product catalog and stock levels for all spice produc
    - `wholesale_price_per_sheet` — selling price per sheet
    - `wholesale_price_per_sheet` — default selling price per sheet (pre-filled in delivery-boy cart)
 3. Stock level tracking with low-stock threshold alerts
-4. Display **available stock** = `total_stock − reserved_stock` in UI
+4. Display `total_stock` ("Stock") in UI — inventory is informational; there is no separate available/reserved figure
 5. Low-stock cron job for automated alerts
 6. Label sheet download (PDF) per item
 7. Search/filter products
@@ -29,11 +29,10 @@ Allow admins to manage the product catalog and stock levels for all spice produc
 
 | Field | Meaning | Changed by |
 |---|---|---|
-| `total_stock` | Total sheets (warehouse + in field) | Decremented only on sale |
-| `reserved_stock` | Sheets currently loaded on delivery boys | +on assignment, −on sale or return |
-| `available_stock` (computed) | `total_stock − reserved_stock` | Derived — not stored |
+| `total_stock` | Sheets still owned (warehouse + in field, not yet sold) | Decremented only on sale (may go negative on oversell) |
 
-> `low_stock_threshold` is compared against `available_stock`, not `total_stock`.
+> Assignment does not touch inventory. What a delivery boy holds is derived via `computeHoldings` (assigned − sold − returned), not from an inventory counter.
+> `low_stock_threshold` is compared against `total_stock`.
 
 ## Key Files
 - Frontend: `inventory/inventory.page.ts`

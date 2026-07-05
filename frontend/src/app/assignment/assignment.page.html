@@ -73,7 +73,7 @@
           <tr>
             <th class="px-4 py-3 text-left font-semibold text-gray-600 w-8">#</th>
             <th class="px-4 py-3 text-left font-semibold text-gray-600">Variant / Size</th>
-            <th class="px-4 py-3 text-right font-semibold text-gray-600" title="Free to load = total stock − stock already with delivery boys">Available Stock</th>
+            <th class="px-4 py-3 text-right font-semibold text-gray-600" title="Sheets currently in stock (reference only — not a limit)">In Stock</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600">Sheet Price (₹)</th>
             <th class="px-4 py-3 text-right font-semibold text-gray-600 w-32">Assign Qty</th>
           </tr>
@@ -127,15 +127,9 @@
                       [class.border-red-400]="rows.at(i).get('assignedQty')?.invalid && rows.at(i).get('assignedQty')?.touched"
                       [class.border-gray-300]="!rows.at(i).get('assignedQty')?.invalid || !rows.at(i).get('assignedQty')?.touched"
                       min="0"
-                      [max]="rows.at(i).get('warehouse_stock')?.value"
                       (keydown.enter)="onEnter($event, i)"
                       (focus)="$any($event.target).select()"
                     />
-                    @if (rows.at(i).get('assignedQty')?.hasError('max')) {
-                      <div class="text-red-500 text-xs mt-0.5 text-right">
-                        Max {{ rows.at(i).get('warehouse_stock')?.value }}
-                      </div>
-                    }
                   </td>
                 </tr>
               }

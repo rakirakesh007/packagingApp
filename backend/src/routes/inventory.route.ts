@@ -17,9 +17,9 @@ router.get('/', async (_req: Request, res: Response) => {
 /** GET /inventory/low-stock — items at or below threshold. */
 router.get('/low-stock', async (_req: Request, res: Response) => {
   try {
-    // available_stock = total_stock − reserved_stock; alert when it drops to or below threshold
+    // Alert when total_stock drops to or below the threshold.
     const items = await InventoryModel.find({
-      $expr: { $lte: [{ $subtract: ['$total_stock', '$reserved_stock'] }, '$low_stock_threshold'] },
+      $expr: { $lte: ['$total_stock', '$low_stock_threshold'] },
     });
     return res.json({ success: true, data: items });
   } catch (error) {

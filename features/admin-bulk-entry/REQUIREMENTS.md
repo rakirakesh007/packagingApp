@@ -46,7 +46,7 @@ rather than one at a time. Supports two distinct sale types in the same entry se
    - **Backend re-computes all prices and profit from inventory — frontend values are display-only**
    - Backend stores: `sheets_sold` (canonical stock unit; fractional for retail), `packets_sold` (retail only), `sale_type`, `final_price`, `profit`
    - Backend decrements `total_stock` by `sheets_sold` (fractional-safe via MongoDB $inc)
-   - No `reserved_stock` change (admin bulk entry bypasses delivery-boy loading flow)
+   - No delivery-boy holdings impact (admin bulk entry has no `delivery_boy_id`); only `total_stock` is decremented
 9. Success/error toast feedback; form resets to one blank row after success
 
 ---

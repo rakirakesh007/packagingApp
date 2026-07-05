@@ -13,21 +13,24 @@ Allow admins to assign inventory/stock to delivery boys for their daily routes.
 1. Select delivery boy and assign products with quantities
 2. View/edit existing assignments (additive on same day)
 3. Assignment date tracking and history
-4. On assignment: increment `reserved_stock` in Inventory (does NOT touch `total_stock`)
-5. On return (partial or full): decrement `reserved_stock` via `POST /assignment/return`
-6. Admin sees **available stock** = `total_stock − reserved_stock` to prevent over-assignment
+4. On assignment: record a `Loading` doc only — inventory is **not** touched (no guard, no reservation)
+5. On return (partial or full): record a `Return` doc via `POST /assignment/return` — inventory is not touched
+6. Assignment is never capped by stock; what a boy holds is derived via `computeHoldings`
 
-## Stock Model (Option A + reserved_stock)
+## Stock Model (holdings-derived, no reservation)
 
-| Event | `total_stock` | `reserved_stock` | available = total − reserved |
-|---|---|---|---|
-| Assign 50 units | unchanged | +50 | −50 |
-| Sell 30 units | −30 | −30 | unchanged |
-| Return 20 unsold | unchanged | −20 | +20 |
+Inventory only tracks `total_stock`, decremented on sale. A delivery boy's current
+holdings are computed on read: `withBoy = Σ assigned (Loading) − Σ sold (Sale) − Σ returned (Return)`.
+
+| Event | `total_stock` | boy's `withBoy` (computed) |
+|---|---|---|
+| Assign 50 units | unchanged | +50 |
+| Sell 30 units | −30 | −30 |
+| Return 20 unsold | unchanged | −20 |
 
 ## API Endpoints
-- `POST /api/assignments` — create/update assignment, increments `reserved_stock`
-- `POST /api/assignments/return` — record return, decrements `reserved_stock`
+- `POST /api/assignments` — create/update assignment (Loading doc only)
+- `POST /api/assignments/return` — record return (Return doc only)
 - `GET  /api/assignments/active/:deliveryBoyId` — today's assignment
 - `GET  /api/assignments/date/:deliveryBoyId?date=` — assignment for any date
 

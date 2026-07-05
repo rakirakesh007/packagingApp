@@ -10,7 +10,6 @@ export interface InventoryItem {
   // mrp_per_unit: printed MRP on individual unit packet
   mrp_per_unit?: number;
   total_stock: number;
-  reserved_stock?: number;
   // wholesale_price_per_sheet: default selling price per sheet
   wholesale_price_per_sheet: number;
   low_stock_threshold: number;

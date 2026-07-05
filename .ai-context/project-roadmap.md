@@ -7,10 +7,10 @@
 ---
 
 ## 1. Business Core Logic (The "Golden Rules")
-- **Atomic Inventory:** All sales must use MongoDB `$inc` inside a transaction, decrementing **both** `total_stock` and `reserved_stock`. Never overwrite stock based on frontend calculations during a sale. Guard: `total_stock − reserved_stock ≥ sheets_sold`.
+- **Atomic Inventory:** All sales must use MongoDB `$inc` inside a transaction, decrementing `total_stock`. Never overwrite stock based on frontend calculations during a sale. A sale is never blocked on stock (may go negative).
 - **Server-side Money:** Client sends only `sheets_sold` + `discount_amount`. Backend computes `final_price`, `profit`, `total_amount`, `total_discount`, `total_profit`.
 - **Pricing:** `final_price = max(0, wholesale_price_per_sheet − discount_amount) × sheets_sold`; `profit = final_price × 0.10` (10% margin on selling price).
-- **Stock Model:** `available_stock = total_stock − reserved_stock`. Assignment reserves stock; sale consumes both the warehouse count and the reservation.
+- **Stock Model:** Inventory is informational — only `total_stock`, decremented on sale. Assignment does not touch inventory; a boy's holdings are derived via `computeHoldings` (assigned − sold − returned). No `reserved_stock`.
 - **Stock Reconciliation:** $$Closing Stock = Opening (Assigned) - Sold (Invoices)$$
 - **Cold Start Handling:** Every primary action (Login, Sync, Report) must trigger the `GlobalLoadingService` to accommodate Render's Free Tier delay.
 
@@ -20,7 +20,7 @@
 > Current sheet-based model. Stock is counted in **sheets**; a sheet holds `units_per_sheet` individual packets.
 
 ### Inventory
-- `item_name`, `hindi_name`, `description`, `units_per_sheet` (packets/sheet), `quantity_per_unit` (gm/packet, printed on label), `mrp_per_unit`, `total_stock` (sheets), `reserved_stock` (sheets loaded but unsold), `wholesale_price_per_sheet`, `low_stock_threshold`, `image_url`.
+- `item_name`, `hindi_name`, `description`, `units_per_sheet` (packets/sheet), `quantity_per_unit` (gm/packet, printed on label), `mrp_per_unit`, `total_stock` (sheets), `wholesale_price_per_sheet`, `low_stock_threshold`, `image_url`.
 ### Sales & Invoicing
 - `delivery_boy_id`, `shop_id` (ref: Shop), `shop_name`, `customer_name`, `payment_mode` (Enum: `cash`, `online`, `pending`), `total_amount`, `total_discount`, `total_profit`, `timestamp`.
 - `items: [{ item_id, sale_type (wholesale|retail), sheets_sold, packets_sold, wholesale_price_per_sheet, discount_amount, final_price, profit, item_name, hindi_name, description }]` — all money fields snapshotted/computed server-side.

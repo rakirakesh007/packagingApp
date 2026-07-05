@@ -36,7 +36,6 @@ interface LowStockItem {
   item_name: string;
   hindi_name?: string;
   total_stock: number;
-  reserved_stock?: number;
   low_stock_threshold: number;
 }
 
@@ -90,7 +89,7 @@ export class AdminDashboardPage implements OnInit {
         this.eodSummary.set(eod);
         this.monthItems.set(itemSales);
         this.lowStock.set(
-          inventory.filter(i => (i.total_stock - (i.reserved_stock ?? 0)) <= i.low_stock_threshold)
+          inventory.filter(i => i.total_stock <= i.low_stock_threshold)
         );
       },
       error: (err) => console.error('Dashboard load failed:', err),

@@ -89,7 +89,7 @@
         @for (item of lowStock(); track item.id) {
           <div class="alert-chip">
             <span class="alert-name">{{ item.hindi_name || item.item_name }}</span>
-            <span class="alert-qty">{{ item.total_stock - (item.reserved_stock ?? 0) }} left</span>
+            <span class="alert-qty">{{ item.total_stock }} left</span>
           </div>
         }
       </div>

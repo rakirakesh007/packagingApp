@@ -44,12 +44,12 @@ npx ts-node src/scripts/reset-dummy-data.ts
 
 ## Business golden rules (do not break)
 
-1. **Atomic stock.** Sales decrement inventory via Mongoose `$inc` inside a transaction (`sale.route.ts`). Never overwrite stock from a frontend-computed number.
+1. **Atomic stock.** Sales decrement inventory via Mongoose `$inc` inside a transaction (`sale.route.ts`). Never overwrite stock from a frontend-computed number. A sale is **never blocked** on stock — `total_stock` may go negative on an oversell.
 2. **Server computes money.** The client sends only `sheets_sold` (or packets) + `selling_price` (the editable negotiated price). The backend computes `final_price`, `profit`, `total_amount`, `total_profit`. Never trust client totals. There is no discount field.
-3. **Sheet-based inventory model:**
-   - `total_stock` = sheets in the warehouse. `reserved_stock` = sheets loaded onto delivery boys but not yet sold. `available_stock` (admin UI only) = `total_stock − reserved_stock`.
-   - Morning **assignment** moves stock into `reserved_stock`; a **sale** decrements **both** `total_stock` and `reserved_stock`.
-   - Sale guard: `total_stock − reserved_stock ≥ sheets_sold` (enforced atomically with `$expr`).
+3. **Inventory is informational (no reservation):**
+   - `total_stock` = sheets still owned. It is decremented **only** on sale; **assignment does not touch inventory at all** (no guard, no reservation). There is no `reserved_stock` / `available_stock`.
+   - What a delivery boy still holds is derived on read via `computeHoldings` (`utils/holdings.util.ts`): `withBoy = Σ assigned (Loading) − Σ sold (Sale) − Σ returned (Return)`. This — not an inventory counter — is the source of truth for the boy's cart and reports.
+   - Morning **assignment** just records a `Loading` doc; a **return** just records a `Return` doc; both only affect holdings, never `total_stock`.
 4. **Pricing:** Selling price is **editable per sale** (negotiated). Note: `wholesale_price_per_sheet` in inventory actually holds the **per-packet** wholesale cost (legacy name).
    - **Default price:** wholesale → `wholesale_price_per_sheet × units_per_sheet` (per sheet); retail → `mrp_per_unit` (per packet).
    - **Wholesale (sheet):** `final_price = selling_price_per_sheet × sheets_sold`; `profit = (wholesale_price_per_sheet × units_per_sheet) × 0.10 × sheets_sold` (10% of per-sheet wholesale cost, NOT of selling price).

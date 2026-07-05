@@ -20,7 +20,7 @@ Enable delivery boys to record sales at shops during their daily route, tracking
    - Place Order button
 6. On successful sale: opens WhatsApp with itemised bill + digital catalog footer
 7. Sale submission: server computes `final_price`, `profit`, `total_amount`, `total_discount`, `total_profit`
-8. Sale decrements both `total_stock` AND `reserved_stock` atomically
+8. Sale decrements `total_stock` atomically; never blocked on stock (may go negative)
 
 ## Pricing at Sale
 - `final_price = (wholesale_price_per_sheet − discount_amount) × sheets_sold`
@@ -44,9 +44,8 @@ Total: ₹Z  |  Payment: Cash/Online
 ```
 
 ## Stock Behaviour on Sale
-- `total_stock -= sheets_sold` — permanently sold
-- `reserved_stock -= sheets_sold` — no longer reserved
-- Net: `available_stock` is unchanged (reserved slot consumed, not freed)
+- `total_stock -= sheets_sold` — permanently sold (informational; may go negative)
+- The boy's holdings drop automatically via `computeHoldings` (the sale counts as `sold`)
 
 ## Key Files
 - Frontend: `sales-cart/sales-cart.page.ts`

@@ -150,8 +150,9 @@ export class AssignmentPage implements OnInit {
   private buildRows(items: InventoryItem[]): void {
     this.rows.clear();
     for (const item of items) {
+      // Informational reference only — assignment is not capped by stock.
       // Floor to whole sheets: retail sales can leave fractional stock; assignment is always whole sheets.
-      const available = Math.floor(Math.max(0, item.total_stock - (item.reserved_stock ?? 0)));
+      const inStock = Math.floor(Math.max(0, item.total_stock));
       this.rows.push(this.fb.group({
         item_id:         [item.id],
         item_name:       [item.item_name],
@@ -161,8 +162,8 @@ export class AssignmentPage implements OnInit {
         mrp_per_unit:    [item.mrp_per_unit ?? 0],
         wholesale_price_per_sheet: [item.wholesale_price_per_sheet ?? 0],
         units_per_sheet: [item.units_per_sheet ?? 12],
-        warehouse_stock: [available],
-        assignedQty: [0, [Validators.min(0), Validators.max(available)]],
+        warehouse_stock: [inStock],
+        assignedQty: [0, [Validators.min(0)]],
       }));
     }
     // Set rowNames after FormArray is fully populated so filteredIndices is always in sync.
@@ -257,7 +258,7 @@ export class AssignmentPage implements OnInit {
       return;
     }
     if (this.form.invalid) {
-      this.submitError.set('Some quantities exceed available warehouse stock.');
+      this.submitError.set('Please enter valid quantities.');
       return;
     }
 
@@ -279,15 +280,8 @@ export class AssignmentPage implements OnInit {
         next: () => {
           this.submitSuccess.set(true);
           this.loading.hide();
-          // Update warehouse stock in form, reset qty after additive assignment
-          this.rows.controls.forEach((row) => {
-            const assigned = Number(row.get('assignedQty')?.value) || 0;
-            const current  = Number(row.get('warehouse_stock')?.value) || 0;
-            const newStock = current - assigned;
-            row.patchValue({ assignedQty: 0, warehouse_stock: newStock });
-            row.get('assignedQty')?.setValidators([Validators.min(0), Validators.max(newStock)]);
-            row.get('assignedQty')?.updateValueAndValidity();
-          });
+          // Reset entered quantities. Assignment does not change warehouse stock.
+          this.rows.controls.forEach((row) => row.patchValue({ assignedQty: 0 }));
           // Keep the boy selected and refresh the Current Load panel.
           this.loadHoldings();
         },

@@ -67,26 +67,19 @@ router.post('/', async (req: Request, res: Response) => {
     const total_amount = saleItems.reduce((sum, i) => sum + i.final_price, 0);
     const total_profit = saleItems.reduce((sum, i) => sum + i.profit, 0);
 
-    // Decrement stock AND create the sale atomically (Golden Rule #1):
-    //   total_stock    − item permanently sold
-    //   reserved_stock − item no longer "in field"; reservation consumed
+    // Decrement stock AND create the sale atomically (Golden Rule #1: never
+    // overwrite stock). total_stock is informational — the sale is never blocked
+    // on stock, so it may go negative on an oversell.
     const session = await mongoose.startSession();
     let sale;
     try {
       await session.withTransaction(async () => {
         for (const item of items as { item_id: string; sheets_sold: number }[]) {
-          const updated = await InventoryModel.findOneAndUpdate(
-            {
-              _id:            item.item_id,
-              total_stock:    { $gte: item.sheets_sold },
-              reserved_stock: { $gte: item.sheets_sold },
-            },
-            { $inc: { total_stock: -item.sheets_sold, reserved_stock: -item.sheets_sold } },
+          await InventoryModel.findByIdAndUpdate(
+            item.item_id,
+            { $inc: { total_stock: -item.sheets_sold } },
             { session }
           );
-          if (!updated) {
-            throw new Error(`Insufficient stock for item ${item.item_id}`);
-          }
         }
 
         const [created] = await SaleModel.create(
@@ -261,7 +254,7 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
     });
 
     // ── Insert sales + decrement stock atomically (Golden Rule #1) ──────────
-    // Admin bulk entry has no delivery boy assignment, so reserved_stock is untouched.
+    // total_stock is informational; the entry is never blocked on stock.
     const session = await mongoose.startSession();
     let insertedCount = 0;
     try {

@@ -35,13 +35,11 @@ function dayBounds(dateParam?: string): { start: Date; end: Date } {
  * Creates a new Loading document or appends to the existing one for the
  * same delivery boy + date.
  *
- * Stock model (Option A + reserved_stock):
- *   - total_stock  : never touched here — only decremented when a sale is recorded.
- *   - reserved_stock: incremented here so the admin sees correct "available" stock
- *                     (available = total_stock − reserved_stock).
- *   On return  → reserved_stock decremented  (POST /assignment/return)
- *   On sale    → total_stock  AND reserved_stock both decremented
- *   This prevents double-deduction and over-assignment of the same stock.
+ * Stock model:
+ *   Assignment records what's loaded onto a delivery boy (the Loading doc) and
+ *   touches inventory NOT AT ALL — there is no stock guard and no reservation.
+ *   What a boy still holds is derived on read via computeHoldings
+ *   (assigned − sold − returned). total_stock only moves when a sale is recorded.
  */
 router.post('/', requireAdmin, async (req: Request, res: Response) => {
   const { delivery_boy_id, items, date } = req.body as {
@@ -98,6 +96,7 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
 
     const normalizedItems = Array.from(requestedItems.values());
 
+    // Persist the loading only — inventory is not touched at assignment.
     if (existing) {
       // Explicitly convert each Mongoose subdocument field to a plain value.
       // Spreading Mongoose subdocs (which use defineProperty internally) can lose values.
@@ -140,17 +139,6 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
       });
     }
 
-    // Increment reserved_stock so admin sees correct available stock (total_stock − reserved_stock).
-    // total_stock is NOT touched — it only moves when a sale is recorded.
-    await InventoryModel.bulkWrite(
-      normalizedItems.map((i) => ({
-        updateOne: {
-          filter: { _id: i.item_id },
-          update: { $inc: { reserved_stock: i.qty } },
-        },
-      }))
-    );
-
     const assignment = existing
       ? await LoadingModel.findOne({
           delivery_boy_id,
@@ -188,8 +176,8 @@ router.get('/holdings/:deliveryBoyId', requireSelfOrAdmin('deliveryBoyId'), asyn
 /**
  * POST /assignment/return
  * Called when a delivery boy returns unsold items to the warehouse.
- * Logs a Return row + decrements reserved_stock. total_stock is unchanged (never deducted at assignment).
- * Cannot return more than the boy currently holds (withBoy).
+ * Logs a Return row so the boy's holdings (assigned − sold − returned) reflect it.
+ * Inventory is not touched. Cannot return more than the boy currently holds (withBoy).
  *
  * Body: { delivery_boy_id, items: [{ item_id, qty }] }
  */
@@ -223,28 +211,10 @@ router.post('/return', requireAdmin, async (req: Request, res: Response) => {
       }
     }
 
-    const session = await mongoose.startSession();
-    try {
-      await session.withTransaction(async () => {
-        // Release reservation — item is physically back in the warehouse.
-        await InventoryModel.bulkWrite(
-          items.map((i) => ({
-            updateOne: {
-              filter: { _id: i.item_id, reserved_stock: { $gte: i.qty } },
-              update: { $inc: { reserved_stock: -i.qty } },
-            },
-          })),
-          { session }
-        );
-        // Log the returns so the running balance reflects them.
-        await ReturnModel.create(
-          items.map((i) => ({ delivery_boy_id, item_id: i.item_id, qty: i.qty })),
-          { session }
-        );
-      });
-    } finally {
-      await session.endSession();
-    }
+    // Log the returns so the running balance (computeHoldings) reflects them.
+    await ReturnModel.create(
+      items.map((i) => ({ delivery_boy_id, item_id: i.item_id, qty: i.qty })),
+    );
 
     const updated = await computeHoldings(delivery_boy_id);
     return res.status(200).json(updated);

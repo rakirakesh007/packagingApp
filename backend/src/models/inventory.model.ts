@@ -36,18 +36,11 @@ const inventorySchema = new Schema(
       min: 0,
       default: 0,
     },
+    // total_stock: informational count of sheets still owned. Decremented on sale
+    // (never blocks — may go negative). Assignments do NOT touch it.
     total_stock: {
       type: Number,
       required: true,
-      min: 0,
-      default: 0,
-    },
-    // reserved_stock: sheets currently loaded onto delivery boys but not yet sold.
-    // available_stock (for admin UI) = total_stock - reserved_stock
-    reserved_stock: {
-      type: Number,
-      required: true,
-      min: 0,
       default: 0,
     },
     // wholesale_price_per_sheet: default selling price per sheet; pre-filled in delivery boy cart
