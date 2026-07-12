@@ -225,7 +225,9 @@ export class CustomerStorePage implements OnInit {
     this.cart.update((m) => {
       const next = new Map(m);
       const cur = next.get(item.id) ?? 0;
-      if (cur < item.sheets_available) next.set(item.id, cur + 1);
+      // Orders are WhatsApp deep-links; sales are never blocked on stock. Cap at a
+      // sane max instead of total_stock (which is informational, often 0).
+      if (cur < 99) next.set(item.id, cur + 1);
       return next;
     });
   }

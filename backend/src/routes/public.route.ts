@@ -11,8 +11,10 @@ const router = Router();
  */
 router.get('/catalog', async (_req: Request, res: Response) => {
   try {
+    // Store visibility is controlled by the in_stock toggle only. total_stock is
+    // informational (never blocks a sale), so it is NOT used to hide items here.
     const docs = await InventoryModel.find(
-      { total_stock: { $gte: 1 }, in_stock: { $ne: false } },
+      { in_stock: { $ne: false } },
       {
         item_name: 1, hindi_name: 1, units_per_sheet: 1, wholesale_price_per_sheet: 1,
         total_stock: 1, search_aliases: 1, mrp_per_unit: 1, image_url: 1, category: 1,
