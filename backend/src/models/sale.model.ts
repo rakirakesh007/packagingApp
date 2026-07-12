@@ -15,7 +15,9 @@ const saleItemSchema = new Schema(
     selling_price_per_sheet:   { type: Number, required: true, min: 0, default: 0 },
     // final_price: revenue collected for this line item (backend-computed, never trust frontend)
     final_price:               { type: Number, required: true, min: 0, default: 0 },
-    // profit: final_price minus production cost allocated to sheets consumed
+    // profit: real profit for this line (see utils/profit.util.ts):
+    // flat_profit_per_pouch × units × sheets, else final_price − cost_per_sheet × sheets,
+    // else legacy 10% of per-sheet wholesale for items not costed yet.
     profit:                    { type: Number, required: true, default: 0 },
     item_name:                 { type: String, required: true, trim: true, default: '' },
     hindi_name:                { type: String, trim: true, default: '' },
@@ -39,7 +41,7 @@ const saleSchema = new Schema(
       },
     },
     total_amount:   { type: Number, required: true, min: 0 },
-    // total_profit: sum of per-item profit (wholesale = 10% of selling price; retail = selling − wholesale cost)
+    // total_profit: sum of per-item profit (computed via utils/profit.util.ts)
     total_profit:   { type: Number, required: true, default: 0 },
     payment_mode:   { type: String, enum: ['cash', 'online', 'pending'], required: true, default: 'cash' },
     timestamp:    { type: Date, required: true, default: () => new Date(), index: true },

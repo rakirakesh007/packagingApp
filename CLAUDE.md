@@ -38,7 +38,7 @@ npx ts-node src/scripts/reset-dummy-data.ts
 
 ## API wiring — IMPORTANT
 
-- Backend routes are mounted at the **root**, NOT under `/api`. Real mounts (`server.ts`): `/auth`, `/inventory`, `/sale` (singular), `/assignment` (singular), `/admin/reports`, `/admin/marketing`, `/expenses`, `/reports`, `/users`, `/shops`.
+- Backend routes are mounted at the **root**, NOT under `/api`. Real mounts (`server.ts`): `/auth`, `/inventory`, `/sale` (singular), `/assignment` (singular), `/admin/reports`, `/admin/marketing`, `/expenses`, `/users`, `/shops`.
 - Frontend services call **relative paths** (`this.http.get('/inventory')`). In dev, `frontend/proxy.conf.json` proxies each top-level path to `:3000`. Do not prefix calls with `/api`.
 - Auth: `authInterceptor` (`frontend/src/app/core/auth.interceptor.ts`) attaches the JWT; `authGuard` (`core/guards/auth.guard.ts`) protects `/app/*` routes. Bootstrap is `bootstrapApplication` in `main.ts` — there is **no `app.module.ts`**.
 
@@ -52,8 +52,9 @@ npx ts-node src/scripts/reset-dummy-data.ts
    - Morning **assignment** just records a `Loading` doc; a **return** just records a `Return` doc; both only affect holdings, never `total_stock`.
 4. **Pricing:** Selling price is **editable per sale** (negotiated). Note: `wholesale_price_per_sheet` in inventory actually holds the **per-packet** wholesale cost (legacy name).
    - **Default price:** wholesale → `wholesale_price_per_sheet × units_per_sheet` (per sheet); retail → `mrp_per_unit` (per packet).
-   - **Wholesale (sheet):** `final_price = selling_price_per_sheet × sheets_sold`; `profit = (wholesale_price_per_sheet × units_per_sheet) × 0.10 × sheets_sold` (10% of per-sheet wholesale cost, NOT of selling price).
-   - **Retail (packet):** `final_price = selling_price_per_unit × packets`; `profit = (selling_price_per_unit − wholesale_price_per_sheet) × packets`.
+   - **Wholesale (sheet):** `final_price = selling_price_per_sheet × sheets_sold`.
+   - **Retail (packet):** `final_price = selling_price_per_unit × packets`.
+   - **Profit** (`utils/profit.util.ts`, precedence order): ① `flat_profit_per_pouch > 0` → `flat × units_per_sheet × sheets`; ② `cost_per_sheet > 0` → `final_price − cost_per_sheet × sheets`; ③ legacy fallback for uncosted items → 10% of per-sheet wholesale (wholesale) or `(selling − wholesale) × packets` (retail). Both cost fields live on Inventory and are editable on the Inventory page.
    - `selling_price_per_sheet` is stored normalized per sheet (retail = per-packet price × `units_per_sheet`).
 5. **Sale types:** `wholesale` (sell by whole sheet — delivery boys + admin) and `retail` (sell individual packets — admin only; `sheets_sold` may be fractional = `packets / units_per_sheet`).
 6. **Cold start:** Render free tier sleeps. Every primary action (login, sync, report) should drive `GlobalLoadingService` so the UI shows a loading state.

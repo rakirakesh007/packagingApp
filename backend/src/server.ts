@@ -37,7 +37,6 @@ import assignmentRoute from './routes/assignment.route';
 import adminReportsRoute from './routes/admin-reports.route';
 import marketingRoute from './routes/marketing.route';
 import expensesRoute from './routes/expenses.route';
-import reportsRoute from './routes/reports.route';
 import usersRoute from './routes/users.route';
 import shopsRoute from './routes/shops.route';
 import publicRoute from './routes/public.route';
@@ -65,7 +64,6 @@ app.use('/assignment', requireAuth, assignmentRoute);
 app.use('/admin/reports', requireAuth, requireAdmin, adminReportsRoute);
 app.use('/admin/marketing', requireAuth, requireAdmin, marketingRoute);
 app.use('/expenses', requireAuth, requireAdmin, expensesRoute);
-app.use('/reports', requireAuth, reportsRoute);
 app.use('/users', requireAuth, requireAdmin, usersRoute);
 app.use('/shops', requireAuth, shopsRoute);
 

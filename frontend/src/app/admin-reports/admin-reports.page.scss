@@ -10,22 +10,6 @@
   &.active { background: #111827; color: #fff; }
 }
 
-.view-toggle {
-  display: flex;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-  button {
-    padding: 0.45rem 0.9rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #6b7280;
-    background: #f9fafb;
-    transition: all 0.15s;
-    &.active { background: #111827; color: #fff; }
-  }
-}
-
 .daily-chart {
   display: flex;
   align-items: flex-end;

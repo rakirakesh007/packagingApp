@@ -113,6 +113,8 @@ export class InventoryPage implements OnInit {
   formQuantityPerUnit = 0;
   formMrpPerUnit = 0;
   formWholesalePricePerSheet = 0;
+  formCostPerSheet = 0;
+  formFlatProfitPerPouch = 0;
   formStock = 0;
   formThreshold = 1;
   formIngredients   = '';
@@ -153,6 +155,8 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
     this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
     this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
+    this.formCostPerSheet           = item.cost_per_sheet ?? 0;
+    this.formFlatProfitPerPouch     = item.flat_profit_per_pouch ?? 0;
     this.formStock       = item.total_stock;
     this.formThreshold   = item.low_stock_threshold;
     this.formIngredients    = item.ingredients ?? '';
@@ -185,6 +189,8 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit = 0;
     this.formMrpPerUnit     = 0;
     this.formWholesalePricePerSheet = 0;
+    this.formCostPerSheet           = 0;
+    this.formFlatProfitPerPouch     = 0;
     this.formStock          = 0;
     this.formThreshold      = first.low_stock_threshold;
     this.formInStock        = true;
@@ -211,6 +217,8 @@ export class InventoryPage implements OnInit {
       quantity_per_unit:          Number(this.formQuantityPerUnit) || 0,
       mrp_per_unit:               Number(this.formMrpPerUnit) || 0,
       wholesale_price_per_sheet:  Number(this.formWholesalePricePerSheet) || 0,
+      cost_per_sheet:             Number(this.formCostPerSheet) || 0,
+      flat_profit_per_pouch:      Number(this.formFlatProfitPerPouch) || 0,
       total_stock:                Number(this.formStock) || 0,
       low_stock_threshold:        Number(this.formThreshold) || 0,
       ingredients:                this.formIngredients.trim(),
@@ -250,6 +258,8 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
     this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
     this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
+    this.formCostPerSheet           = item.cost_per_sheet ?? 0;
+    this.formFlatProfitPerPouch     = item.flat_profit_per_pouch ?? 0;
     this.formStock       = 0;
     this.formThreshold   = item.low_stock_threshold;
     this.formIngredients   = item.ingredients ?? '';
@@ -279,7 +289,7 @@ export class InventoryPage implements OnInit {
     });
   }
 
-  downloadLabelSheet(items: InventoryItem[], totalCards = 35): void {
+  downloadLabelSheet(items: InventoryItem[], totalCards = 35, size: 'normal' | 'big' = 'normal'): void {
     const sourceItems = items.filter(Boolean);
     if (sourceItems.length === 0) {
       window.alert('Please select at least one inventory item to print labels.');
@@ -289,7 +299,7 @@ export class InventoryPage implements OnInit {
     // Navigate to label-sheet with item IDs and total count
     const itemIds = sourceItems.map((item) => item.id).join(',');
     this.router.navigate(['/label-sheet'], {
-      queryParams: { itemIds, total: totalCards },
+      queryParams: { itemIds, total: totalCards, size },
     });
   }
 
@@ -329,6 +339,8 @@ export class InventoryPage implements OnInit {
     this.formQuantityPerUnit        = 0;
     this.formMrpPerUnit             = 0;
     this.formWholesalePricePerSheet = 0;
+    this.formCostPerSheet           = 0;
+    this.formFlatProfitPerPouch     = 0;
     this.formStock       = 0;
     this.formThreshold   = 1;
     this.formIngredients   = '';

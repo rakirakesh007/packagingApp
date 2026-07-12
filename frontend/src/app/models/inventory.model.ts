@@ -13,6 +13,10 @@ export interface InventoryItem {
   // wholesale_price_per_sheet: default selling price per sheet
   wholesale_price_per_sheet: number;
   low_stock_threshold: number;
+  // cost_per_sheet: REAL production cost per sheet (owner's costing sheet); 0 = not costed
+  cost_per_sheet?: number;
+  // flat_profit_per_pouch: owner-quoted fixed profit per pouch; takes precedence over cost_per_sheet
+  flat_profit_per_pouch?: number;
   image_url?: string;
   ingredients?: string;
   search_aliases?: string;

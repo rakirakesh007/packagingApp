@@ -11,7 +11,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { saveAs } from 'file-saver';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { SheetQtyPipe } from '../core/sheet-qty.pipe';
 
 interface EodByBoy {
@@ -45,7 +46,33 @@ interface MonthlySummary {
   totalRevenue: number;
   totalProfit: number;
   totalExpenses: number;
+  overheadExpenses?: number;
+  stockPurchased?: number;
   netProfit: number;
+  expenseByCategory?: { category: string; amount: number }[];
+}
+
+interface ItemSaleRow {
+  item_id: string;
+  item_name: string;
+  hindi_name: string;
+  sheets_sold: number;
+  revenue: number;
+  profit: number;
+  units_per_sheet: number;
+  mrp_per_unit: number;
+}
+
+interface OverallSummary {
+  totalRevenue: number;
+  totalProfit: number;
+  totalExpenses: number;
+  overheadExpenses?: number;
+  stockPurchased?: number;
+  netProfit: number;
+  totalSheets: number;
+  salesCount: number;
+  firstSaleDate: string | null;
 }
 
 interface StaffRow {
@@ -56,6 +83,16 @@ interface StaffRow {
   totalCashCollected: number;
   netCash: number;
   paymentStatus: string;
+}
+
+interface PayoutRow {
+  date: string;
+  delivery_boy_id: string;
+  delivery_boy_name: string;
+  sheets5: number;
+  sheets10: number;
+  packets: number;
+  payout: number;
 }
 
 @Component({
@@ -70,8 +107,7 @@ export class AdminReportsPage implements OnInit {
   private http    = inject(HttpClient);
   private loading = inject(GlobalLoadingService);
 
-  activeTab  = signal<'eod' | 'monthly' | 'staff'>('eod');
-  eodView    = signal<'by-boy' | 'by-product'>('by-boy');
+  activeTab  = signal<'eod' | 'monthly' | 'staff' | 'payout'>('eod');
 
   eodByBoy     = signal<EodByBoy[]>([]);
   eodByProduct = signal<EodByProduct[]>([]);
@@ -82,7 +118,20 @@ export class AdminReportsPage implements OnInit {
     totalRevenue: 0, totalProfit: 0, totalExpenses: 0, netProfit: 0,
   });
   staffMonthly = signal<StaffRow[]>([]);
+  payoutRows   = signal<PayoutRow[]>([]);
+  itemSales    = signal<ItemSaleRow[]>([]);
+  overall      = signal<OverallSummary | null>(null);
   selectedMonth = signal(this.currentMonthKey());
+
+  payoutTotals = computed(() => this.payoutRows().reduce(
+    (acc, r) => ({
+      sheets5: acc.sheets5 + r.sheets5,
+      sheets10: acc.sheets10 + r.sheets10,
+      packets: acc.packets + (r.packets ?? 0),
+      payout: acc.payout + r.payout,
+    }),
+    { sheets5: 0, sheets10: 0, packets: 0, payout: 0 },
+  ));
 
   selectedMonthLabel = computed(() => {
     const [year, month] = this.selectedMonth().split('-').map(Number);
@@ -103,22 +152,34 @@ export class AdminReportsPage implements OnInit {
     return { year, month };
   }
 
+  /** Fallback so one failed API doesn't blank every tab (each request catches its own error). */
+  private emptyMonthly(): MonthlySummary {
+    const { year, month } = this.split(this.selectedMonth());
+    return { month, year, totalRevenue: 0, totalProfit: 0, totalExpenses: 0, netProfit: 0, expenseByCategory: [] };
+  }
+
   loadAll(): void {
     this.loading.show();
     const { year, month } = this.split(this.selectedMonth());
     forkJoin({
-      eodBoy:     this.http.get<EodByBoy[]>('/admin/reports/eod'),
-      eodProduct: this.http.get<EodByProduct[]>('/admin/reports/eod-by-product'),
-      monthly:    this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`),
-      staff:      this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`),
-      daily:      this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`),
+      eodBoy:     this.http.get<EodByBoy[]>('/admin/reports/eod').pipe(catchError(() => of([] as EodByBoy[]))),
+      eodProduct: this.http.get<EodByProduct[]>('/admin/reports/eod-by-product').pipe(catchError(() => of([] as EodByProduct[]))),
+      monthly:    this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`).pipe(catchError(() => of(this.emptyMonthly()))),
+      staff:      this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`).pipe(catchError(() => of({ staff: [] as StaffRow[] }))),
+      daily:      this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`).pipe(catchError(() => of([] as DailySale[]))),
+      payout:     this.http.get<PayoutRow[]>(`/admin/reports/boy-payout?month=${month}&year=${year}`).pipe(catchError(() => of([] as PayoutRow[]))),
+      itemSales:  this.http.get<ItemSaleRow[]>(`/admin/reports/item-sales?month=${month}&year=${year}`).pipe(catchError(() => of([] as ItemSaleRow[]))),
+      overall:    this.http.get<OverallSummary>('/admin/reports/overall').pipe(catchError(() => of(null as OverallSummary | null))),
     }).subscribe({
-      next: ({ eodBoy, eodProduct, monthly, staff, daily }) => {
+      next: ({ eodBoy, eodProduct, monthly, staff, daily, payout, itemSales, overall }) => {
         this.eodByBoy.set(eodBoy);
         this.eodByProduct.set(eodProduct);
         this.monthlySummary.set(monthly);
         this.staffMonthly.set(staff.staff);
         this.dailySales.set(daily);
+        this.payoutRows.set(payout);
+        this.itemSales.set(itemSales);
+        this.overall.set(overall);
       },
       error: (err) => console.error('Reports load failed:', err),
       complete: () => this.loading.hide(),
@@ -130,34 +191,54 @@ export class AdminReportsPage implements OnInit {
     this.loading.show();
     const { year, month } = this.split(key);
     forkJoin({
-      monthly: this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`),
-      staff:   this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`),
-      daily:   this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`),
+      monthly:   this.http.get<MonthlySummary>(`/admin/reports/monthly?month=${month}&year=${year}`).pipe(catchError(() => of(this.emptyMonthly()))),
+      staff:     this.http.get<{ staff: StaffRow[] }>(`/admin/reports/staff-monthly?month=${month}&year=${year}`).pipe(catchError(() => of({ staff: [] as StaffRow[] }))),
+      daily:     this.http.get<DailySale[]>(`/admin/reports/daily-sales?month=${month}&year=${year}`).pipe(catchError(() => of([] as DailySale[]))),
+      payout:    this.http.get<PayoutRow[]>(`/admin/reports/boy-payout?month=${month}&year=${year}`).pipe(catchError(() => of([] as PayoutRow[]))),
+      itemSales: this.http.get<ItemSaleRow[]>(`/admin/reports/item-sales?month=${month}&year=${year}`).pipe(catchError(() => of([] as ItemSaleRow[]))),
     }).subscribe({
-      next: ({ monthly, staff, daily }) => {
+      next: ({ monthly, staff, daily, payout, itemSales }) => {
         this.monthlySummary.set(monthly);
         this.staffMonthly.set(staff.staff);
         this.dailySales.set(daily);
+        this.payoutRows.set(payout);
+        this.itemSales.set(itemSales);
       },
       error: (err) => console.error('Monthly refresh failed:', err),
       complete: () => this.loading.hide(),
     });
   }
 
-  setTab(tab: 'eod' | 'monthly' | 'staff'): void { this.activeTab.set(tab); }
+  setTab(tab: 'eod' | 'monthly' | 'staff' | 'payout'): void { this.activeTab.set(tab); }
 
+  exportPayoutCSV(): void {
+    const rows = this.payoutRows().map(r =>
+      `${r.date},${r.delivery_boy_name},${r.sheets5},${r.sheets10},${r.packets},${r.payout}`);
+    const t = this.payoutTotals();
+    const csv = [
+      'Date,Boy,₹5 Sheets,₹10 Sheets,50g Pkts,Payout',
+      ...rows,
+      `TOTAL,,${t.sheets5},${t.sheets10},${t.packets},${t.payout}`,
+    ].join('\n');
+    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'Boy_Payout.csv');
+  }
+
+  /** One CSV with both EOD sections (by boy, then by product). */
   exportCSV(): void {
-    if (this.eodView() === 'by-boy') {
-      const rows = this.eodByBoy().map(s =>
-        `${s.delivery_boy_name},${s.openingStock},${s.sold},${s.remaining},${s.cashCollected}`);
-      const csv = ['Name,Opening,Sold,Remaining,Cash', ...rows].join('\n');
-      saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'EOD_By_Boy.csv');
-    } else {
-      const rows = this.eodByProduct().map(s =>
-        `${s.item_name},${s.hindi_name},${s.opening},${s.sold},${s.remaining}`);
-      const csv = ['Item,HindiName,Opening,Sold,Remaining', ...rows].join('\n');
-      saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'EOD_By_Product.csv');
-    }
+    const boyRows = this.eodByBoy().map(s =>
+      `${s.delivery_boy_name},${s.openingStock},${s.sold},${s.remaining},${s.cashCollected}`);
+    const productRows = this.eodByProduct().map(s =>
+      `${s.item_name},${s.hindi_name},${s.opening},${s.sold},${s.remaining}`);
+    const csv = [
+      'BY DELIVERY BOY',
+      'Name,Opening,Sold,Remaining,Cash',
+      ...boyRows,
+      '',
+      'BY PRODUCT',
+      'Item,HindiName,Opening,Sold,Remaining',
+      ...productRows,
+    ].join('\n');
+    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'EOD_Report.csv');
   }
 
   downloadMonthlyPdf(): void {
@@ -186,9 +267,10 @@ export class AdminReportsPage implements OnInit {
       <div class="grid">
         <div class="card"><div class="label">Revenue</div><div class="value">₹${summary.totalRevenue.toFixed(0)}</div></div>
         <div class="card"><div class="label">Gross Profit</div><div class="value">₹${(summary.totalProfit ?? 0).toFixed(0)}</div></div>
-        <div class="card"><div class="label">Expenses</div><div class="value">₹${summary.totalExpenses.toFixed(0)}</div></div>
+        <div class="card"><div class="label">Overhead</div><div class="value">₹${(summary.overheadExpenses ?? summary.totalExpenses).toFixed(0)}</div></div>
         <div class="card"><div class="label">Net Profit</div><div class="value">₹${summary.netProfit.toFixed(0)}</div></div>
       </div>
+      <p style="color:#6b7280;font-size:12px;margin:0 0 8px">Stock purchased (materials/packing/delivery — already inside cost per sheet, not counted in Net Profit): ₹${(summary.stockPurchased ?? 0).toFixed(0)}</p>
       <table><thead><tr>
         <th>Boy Name</th><th class="tr">Sheets Sold</th>
         <th class="tr">Sales</th><th class="tr">Net Cash</th><th>Status</th>

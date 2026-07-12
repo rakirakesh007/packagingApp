@@ -66,12 +66,6 @@ export const routes: Routes = [
         canActivate: [adminGuard],
       },
       {
-        path: 'eod-report',
-        loadComponent: () =>
-          import('./eod-report/eod-report.component').then((m) => m.EodReportComponent),
-        canActivate: [adminGuard],
-      },
-      {
         path: 'reports',
         loadComponent: () =>
           import('./admin-reports/admin-reports.page').then((m) => m.AdminReportsPage),

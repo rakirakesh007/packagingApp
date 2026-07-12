@@ -17,8 +17,11 @@ Allow admins to manage the product catalog and stock levels for all spice produc
    - `units_per_sheet` — how many individual packets per sheet (e.g. 10 or 12)
    - `quantity_per_unit` — weight/volume per packet in grams (shown as label: **Quantity/unit**)
    - `mrp_per_unit` — printed MRP on individual packet (**MRP/unit**)
-   - `wholesale_price_per_sheet` — selling price per sheet
    - `wholesale_price_per_sheet` — default selling price per sheet (pre-filled in delivery-boy cart)
+   - `cost_per_sheet` — REAL production cost per sheet (owner's costing sheet); 0 = not costed yet
+   - `flat_profit_per_pouch` — owner-quoted fixed profit per pouch (e.g. Cardamom/Garam Masala ₹5→₹1, ₹10→₹2);
+     **takes precedence** over `cost_per_sheet` when computing sale profit (`utils/profit.util.ts`).
+     Both editable on the Inventory form; seeded by `scripts/seed-real-costs.ts`
 3. Stock level tracking with low-stock threshold alerts
 4. Display `total_stock` ("Stock") in UI — inventory is informational; there is no separate available/reserved figure
 5. Low-stock cron job for automated alerts

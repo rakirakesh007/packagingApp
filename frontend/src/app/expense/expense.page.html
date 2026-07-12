@@ -2,6 +2,43 @@
 <div class="p-4">
   <h2 class="text-xl font-bold mb-4">Expense Tracker</h2>
 
+  <!-- Reference note: what goes where -->
+  <details class="mb-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+    <summary class="cursor-pointer select-none px-4 py-2 font-semibold text-blue-800">
+      ℹ️ What to log here vs in Inventory (cost per sheet)
+    </summary>
+    <div class="px-4 pb-3 pt-1 text-gray-700 space-y-3">
+      <p><strong>Rule:</strong> a cost that changes <em>per pouch you make</em> belongs in the item's
+        <strong>cost&nbsp;per&nbsp;sheet</strong> (Inventory). A cost that does <em>not</em> (fuel, rent, phone…)
+        belongs here as overhead.</p>
+
+      <div>
+        <p class="font-semibold text-gray-800">These categories are treated as <em>stock purchases</em> — they do NOT reduce Net Profit (they're already inside cost per sheet):</p>
+        <ul class="list-disc ml-5">
+          <li><strong>Raw Material</strong> — the spice</li>
+          <li><strong>Packaging</strong> — pouch + label</li>
+          <li><strong>Salary</strong> — delivery-boy per-sheet charge</li>
+        </ul>
+      </div>
+
+      <div>
+        <p class="font-semibold text-gray-800">These are real overhead — they DO reduce Net Profit:</p>
+        <ul class="list-disc ml-5">
+          <li>Fuel, Transport, Utilities, Maintenance, Miscellaneous, Other</li>
+        </ul>
+      </div>
+
+      <div>
+        <p class="font-semibold text-gray-800">How cost per sheet is calculated (in Inventory):</p>
+        <p class="font-mono text-xs bg-white border border-gray-200 rounded p-2 mt-1">
+          cost_per_sheet = material + labour + packing + delivery<br>
+          material = pack_weight(g) × units_per_sheet × (rate₹/kg ÷ 1000) × 1.02
+        </p>
+        <p class="text-xs text-gray-500 mt-1">The 1.02 is 2% wastage. Do <strong>not</strong> add your margin — cost is only cost; margin = selling price − cost. This is the "Cost/sheet" column in your costing spreadsheet.</p>
+      </div>
+    </div>
+  </details>
+
   <!-- Add / Edit form -->
   <form [formGroup]="expenseForm" (ngSubmit)="saveExpense()" class="mb-4 flex flex-wrap items-center gap-2">
     <select formControlName="category" class="border rounded p-2" aria-label="Category">
@@ -84,6 +121,51 @@
     <div class="bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
       <span class="text-sm text-gray-600 mr-2">Total ({{ monthLabel() }}):</span>
       <span class="text-lg font-bold text-rose-700">₹{{ total() | number:'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <!-- Category breakdowns -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+    <!-- This month by category -->
+    <div class="bg-white border border-gray-200 rounded-lg p-3">
+      <h3 class="text-sm font-bold text-gray-700 mb-2">{{ monthLabel() }} — by category</h3>
+      @if (monthByCategory().length > 0) {
+        <ul class="space-y-1">
+          @for (c of monthByCategory(); track c.category) {
+            <li class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">{{ c.category }} <span class="text-gray-400">({{ c.count }})</span></span>
+              <span class="font-mono font-semibold text-gray-800">₹{{ c.total | number:'1.0-0' }}</span>
+            </li>
+          }
+        </ul>
+        <div class="flex items-center justify-between text-sm border-t border-gray-200 mt-2 pt-2">
+          <span class="font-semibold text-gray-700">Month total</span>
+          <span class="font-mono font-bold text-rose-700">₹{{ total() | number:'1.0-0' }}</span>
+        </div>
+      } @else {
+        <p class="text-sm text-gray-400">No expenses this month.</p>
+      }
+    </div>
+
+    <!-- All-time by category -->
+    <div class="bg-white border border-gray-200 rounded-lg p-3">
+      <h3 class="text-sm font-bold text-gray-700 mb-2">All-time — by category</h3>
+      @if (summary(); as s) {
+        <ul class="space-y-1">
+          @for (c of s.byCategory; track c.category) {
+            <li class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">{{ c.category }} <span class="text-gray-400">({{ c.count }})</span></span>
+              <span class="font-mono font-semibold text-gray-800">₹{{ c.total | number:'1.0-0' }}</span>
+            </li>
+          }
+        </ul>
+        <div class="flex items-center justify-between text-sm border-t border-gray-200 mt-2 pt-2">
+          <span class="font-semibold text-gray-700">Grand total</span>
+          <span class="font-mono font-bold text-rose-700">₹{{ s.grandTotal | number:'1.0-0' }}</span>
+        </div>
+      } @else {
+        <p class="text-sm text-gray-400">Loading…</p>
+      }
     </div>
   </div>
 

@@ -15,7 +15,7 @@ import {
 import { ExpenseService } from '../services/expense.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { ToastService } from '../services/toast.service';
-import { Expense } from '../models/expense.model';
+import { Expense, ExpenseSummary, CategoryTotal } from '../models/expense.model';
 
 const EXPENSE_CATEGORIES = [
   'Fuel',
@@ -77,6 +77,23 @@ export class ExpensePage implements OnInit {
 
   total = computed(() => this.expenses().reduce((sum, e) => sum + (e.amount ?? 0), 0));
 
+  /** Selected month's expenses grouped by category, largest first. */
+  monthByCategory = computed<CategoryTotal[]>(() => {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const e of this.expenses()) {
+      const c = map.get(e.category) ?? { total: 0, count: 0 };
+      c.total += e.amount ?? 0;
+      c.count += 1;
+      map.set(e.category, c);
+    }
+    return [...map.entries()]
+      .map(([category, v]) => ({ category, total: v.total, count: v.count }))
+      .sort((a, b) => b.total - a.total);
+  });
+
+  /** All-time totals by category (loaded from the backend summary endpoint). */
+  summary = signal<ExpenseSummary | null>(null);
+
   editingId = signal<string | null>(null);
 
   expenseForm = this.fb.group({
@@ -88,6 +105,7 @@ export class ExpensePage implements OnInit {
 
   ngOnInit(): void {
     this.loadExpenses();
+    this.loadSummary();
   }
 
   private loadExpenses(): void {
@@ -96,6 +114,14 @@ export class ExpensePage implements OnInit {
       next: (data) => this.expenses.set(data),
       error: (err) => console.error('Failed to load expenses:', err),
       complete: () => this.loading.hide(),
+    });
+  }
+
+  /** Refresh the all-time by-category summary (after any add/edit/delete). */
+  private loadSummary(): void {
+    this.expenseService.getSummary().subscribe({
+      next: (data) => this.summary.set(data),
+      error: (err) => console.error('Failed to load expense summary:', err),
     });
   }
 
@@ -134,6 +160,7 @@ export class ExpensePage implements OnInit {
         this.toast.success(id ? 'Expense updated.' : 'Expense added.');
         this.cancelEdit();
         this.loadExpenses();
+        this.loadSummary();
       },
       error: (err) => {
         console.error('Failed to save expense:', err);
@@ -166,6 +193,7 @@ export class ExpensePage implements OnInit {
         this.toast.success('Expense deleted.');
         if (this.editingId() === id) this.cancelEdit();
         this.loadExpenses();
+        this.loadSummary();
       },
       error: (err) => {
         console.error('Failed to delete expense:', err);

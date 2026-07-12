@@ -24,6 +24,32 @@
   break-inside: avoid;
 }
 
+/* ── Big pouch (3-inch) labels: 4 per row + scaled content to fill cell ─────── */
+.label-sheet.size-big {
+  grid-template-columns: repeat(4, 1fr);
+
+  .logo-column {
+    width: 84px;
+    min-width: 84px;
+    padding: 6px;
+  }
+  .brand-logo { width: 74px; height: 74px; }
+
+  .veg-badge { gap: 3px; }
+  .veg-icon { width: 17px; height: 17px; }
+  .veg-text { font-size: 10px; }
+
+  .content-column { padding: 4px 6px 4px 6px; }
+
+  .item-name-hindi { font-size: 25px; margin-bottom: 4px; }
+  .item-name-english { font-size: 15px; margin-bottom: 4px; }
+  .specs-line { font-size: 12px; margin-bottom: 4px; }
+  .quality-line { font-size: 12px; }
+  .fssai-section { gap: 4px; margin-top: 4px; }
+  .fssai-logo { height: 15px; }
+  .fssai-label { font-size: 11px; }
+}
+
 /* ── Left: Logo Column ────────────────────────────────────────────────────── */
 .logo-column {
   width: 70px;
@@ -67,7 +93,7 @@
 }
 
 /* No-ingredients labels: smaller logo to fit 11-row layout (18.7mm rows on A4) */
-.label-sheet.no-ingredients .brand-logo {
+.label-sheet.no-ingredients:not(.size-big) .brand-logo {
   width: 40px;
   height: 40px;
 }

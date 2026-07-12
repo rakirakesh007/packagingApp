@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Expense } from '../models/expense.model';
+import { Expense, ExpenseSummary } from '../models/expense.model';
 
 @Injectable({ providedIn: 'root' })
 export class ExpenseService {
@@ -10,6 +10,11 @@ export class ExpenseService {
   getExpenses(month?: number, year?: number) {
     const q = month && year ? `?month=${month}&year=${year}` : '';
     return this.http.get<Expense[]>(`/expenses${q}`);
+  }
+
+  /** All-time totals grouped by category (+ grand total). */
+  getSummary() {
+    return this.http.get<ExpenseSummary>('/expenses/summary');
   }
 
   addExpense(data: { category: string; amount: number; description?: string; date?: string }) {

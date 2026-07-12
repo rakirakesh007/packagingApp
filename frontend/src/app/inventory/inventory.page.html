@@ -99,6 +99,7 @@
                           [title]="(item.in_stock ?? true) ? 'In Stock — click to mark Out of Stock' : 'Out of Stock — click to mark In Stock'"
                         >{{ (item.in_stock ?? true) ? '✓' : '✗' }}</button>
                         <button (click)="downloadLabelSheet([item])" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold" title="Download Labels">⬇️</button>
+                        <button (click)="downloadLabelSheet([item], 16, 'big')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs px-2 py-1 rounded font-semibold" title="Download Big Labels (3 inch pouch)">⬇️ Big</button>
                         <button (click)="duplicateItem(item)" class="bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs px-2 py-1 rounded font-semibold" title="Duplicate">📋</button>
                         <button (click)="openEditModal(item)" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs px-2 py-1 rounded font-semibold" title="Edit">✏️</button>
                         <button (click)="deleteItem(item)" class="bg-red-100 hover:bg-red-200 text-red-700 text-xs px-2 py-1 rounded font-semibold" title="Delete">🗑️</button>
@@ -246,6 +247,16 @@
             <label class="block">
               <span class="block text-sm font-medium text-gray-700 mb-1">Wholesale Price / Sheet (&#x20B9;)</span>
               <input [(ngModel)]="formWholesalePricePerSheet" name="formWholesalePricePerSheet" type="number" class="w-full border rounded-lg p-3" min="0" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Cost / Sheet (&#x20B9;) <span class="text-xs text-gray-400">real production cost</span></span>
+              <input [(ngModel)]="formCostPerSheet" name="formCostPerSheet" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="0 = not costed" />
+            </label>
+
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">Flat Profit / Pouch (&#x20B9;) <span class="text-xs text-gray-400">overrides cost</span></span>
+              <input [(ngModel)]="formFlatProfitPerPouch" name="formFlatProfitPerPouch" type="number" class="w-full border rounded-lg p-3" min="0" placeholder="e.g. 1 or 2" />
             </label>
 
             <label class="block">

@@ -17,6 +17,7 @@ export class LabelSheetComponent implements OnInit {
 
   items = signal<InventoryItem[]>([]);
   totalLabels = signal(0);
+  labelSize = signal<'normal' | 'big'>('normal');
   hasIngredients = computed(() => this.items().some(i => !!i.ingredients));
   logoDataUrl = signal<string | null>(null);
   vegDataUrl = signal<string | null>(null);
@@ -65,16 +66,23 @@ export class LabelSheetComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
       const itemIds = params['itemIds'] ? params['itemIds'].split(',') : [];
+      const isBig = params['size'] === 'big';
+      this.labelSize.set(isBig ? 'big' : 'normal');
+      // Big labels render 4 per row; normal 5. Round up to a full row — no partial rows.
+      const cols = isBig ? 4 : 5;
       const total = params['total'] ? parseInt(params['total'], 10) : 35;
-      // Round up to nearest multiple of 5 — no partial rows
-      const paddedTotal = Math.ceil(Math.max(total, 5) / 5) * 5;
+      const paddedTotal = Math.ceil(Math.max(total, cols) / cols) * cols;
 
       if (itemIds.length > 0) {
         this.inventoryService.getItemsByIds(itemIds).subscribe({
           next: (fetched) => {
             this.items.set(fetched);
             const hasIngr = fetched.some(i => !!i.ingredients);
-            this.totalLabels.set(hasIngr ? 35 : 55);
+            if (isBig) {
+              this.totalLabels.set(hasIngr ? 16 : 20);
+            } else {
+              this.totalLabels.set(hasIngr ? 35 : 55);
+            }
           },
           error: (err) => {
             console.error('Failed to fetch items:', err);

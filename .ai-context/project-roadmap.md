@@ -115,5 +115,8 @@
 - [x] WhatsApp Digital Catalog (secondary WhatsApp message appended after owner contact line — generated from inventory array, Hindi name + MRP, items with stock ≥ 5, polite mobile CTA)
 - [x] Printable Product Label Sheet (A4 landscape, 15-up grid, logo/veg assets, PKD/batch, one-page PDF)
 - [x] Delivery Boy Management (Admin CRUD: add/edit/deactivate, isActive login gate)
+- [x] Delivery-Boy Payout Report (Reports → Payout tab: per date × boy, ₹5/₹10 sheet split, two-tier commission)
+- [x] Real Profit Model (inventory `cost_per_sheet` + `flat_profit_per_pouch`, `utils/profit.util.ts` at sale time, seed + historical backfill scripts; Monthly/Overall reports show true profit)
+- [x] Reports Overhaul (EOD merged single view with compact product grid; Monthly item-wise sales + expense category breakdown + all-time Overall cards; orphaned eod-report page/endpoint removed; per-request catchError)
 - [ ] Shops Marketing Page (Admin view of all shops)
 - [ ] Render Deployment Scripts (PENDING)

@@ -24,6 +24,22 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+/** GET /expenses/summary — All-time expense totals grouped by category (+ grand total). */
+router.get('/summary', async (_req: Request, res: Response) => {
+  try {
+    const grouped = await ExpenseModel.aggregate([
+      { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $sort: { total: -1 } },
+    ]);
+    const byCategory = grouped.map((g) => ({ category: g._id, total: g.total, count: g.count }));
+    const grandTotal = byCategory.reduce((sum, c) => sum + c.total, 0);
+    return res.json({ grandTotal, byCategory });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
 /** POST /expenses — Create a new expense entry. */
 router.post('/', async (req: Request, res: Response) => {
   const { category, amount, description, date } = req.body;

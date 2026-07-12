@@ -5,3 +5,14 @@ export interface Expense {
   description?: string;
   date?: Date;
 }
+
+export interface CategoryTotal {
+  category: string;
+  total: number;
+  count: number;
+}
+
+export interface ExpenseSummary {
+  grandTotal: number;
+  byCategory: CategoryTotal[];
+}

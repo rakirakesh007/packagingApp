@@ -23,6 +23,7 @@
   <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
     <button class="tab-btn" [class.active]="activeTab() === 'eod'"     (click)="setTab('eod')">EOD Report</button>
     <button class="tab-btn" [class.active]="activeTab() === 'monthly'" (click)="setTab('monthly')">Monthly Summary</button>
+    <button class="tab-btn" [class.active]="activeTab() === 'payout'"  (click)="setTab('payout')">Payout</button>
     <!-- Staff Payments tab disabled for now -->
   </div>
 
@@ -33,86 +34,66 @@
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 class="text-xl font-bold">End-of-Day Summary</h2>
-          <p class="text-sm text-gray-500">Today's stock reconciliation</p>
+          <p class="text-sm text-gray-500">Today's stock reconciliation — by delivery boy &amp; by product</p>
         </div>
-        <div class="flex items-center gap-3">
-          <!-- By Boy / By Product toggle -->
-          <div class="view-toggle">
-            <button [class.active]="eodView() === 'by-boy'"     (click)="eodView.set('by-boy')">By Delivery Boy</button>
-            <button [class.active]="eodView() === 'by-product'" (click)="eodView.set('by-product')">By Product</button>
-          </div>
-          <button (click)="exportCSV()"
-            class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-black font-semibold">
-            Export CSV
-          </button>
-        </div>
+        <button (click)="exportCSV()"
+          class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-black font-semibold">
+          Export CSV
+        </button>
       </div>
 
       <!-- By Delivery Boy table -->
-      @if (eodView() === 'by-boy') {
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
-              <tr>
-                <th class="px-4 py-3 text-left">Delivery Boy</th>
-                <th class="px-4 py-3 text-right">Opening Stock</th>
-                <th class="px-4 py-3 text-right">Sold</th>
-                <th class="px-4 py-3 text-right">Remaining</th>
-                <th class="px-4 py-3 text-right">Cash Collected</th>
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+            <tr>
+              <th class="px-4 py-3 text-left">Delivery Boy</th>
+              <th class="px-4 py-3 text-right">Opening Stock</th>
+              <th class="px-4 py-3 text-right">Sold</th>
+              <th class="px-4 py-3 text-right">Remaining</th>
+              <th class="px-4 py-3 text-right">Cash Collected</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @for (row of eodByBoy(); track row.delivery_boy_id) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium">{{ row.delivery_boy_name }}</td>
+                <td class="px-4 py-3 text-right">{{ row.openingStock }}</td>
+                <td class="px-4 py-3 text-right">{{ row.sold }}</td>
+                <td class="px-4 py-3 text-right" [class.text-red-600]="row.remaining < 0">{{ row.remaining }}</td>
+                <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ row.cashCollected | number:'1.0-0' }}</td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              @for (row of eodByBoy(); track row.delivery_boy_id) {
-                <tr class="hover:bg-gray-50">
-                  <td class="px-4 py-3 font-medium">{{ row.delivery_boy_name }}</td>
-                  <td class="px-4 py-3 text-right">{{ row.openingStock }}</td>
-                  <td class="px-4 py-3 text-right">{{ row.sold }}</td>
-                  <td class="px-4 py-3 text-right" [class.text-red-600]="row.remaining < 0">{{ row.remaining }}</td>
-                  <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ row.cashCollected | number:'1.0-0' }}</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No activity today.</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+            } @empty {
+              <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No activity today.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
 
-      <!-- By Product table -->
-      @if (eodView() === 'by-product') {
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
-              <tr>
-                <th class="px-4 py-3 text-left">Product</th>
-                <th class="px-4 py-3 text-right">Opening</th>
-                <th class="px-4 py-3 text-right">Sold</th>
-                <th class="px-4 py-3 text-right">Remaining</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              @for (row of eodByProduct(); track row.item_id) {
-                <tr class="hover:bg-gray-50">
-                  <td class="px-4 py-3 font-medium">
-                    {{ row.hindi_name || row.item_name }}
-                    @if (row.hindi_name) {
-                      <span class="text-xs text-gray-400 ml-1">({{ row.item_name }})</span>
-                    }
-                    @if (row.wholesale_price_per_sheet) {
-                      <span class="text-xs text-indigo-500 ml-2">₹{{ row.wholesale_price_per_sheet * row.units_per_sheet }}/sheet</span>
-                    }
-                  </td>
-                  <td class="px-4 py-3 text-right">{{ row.opening | sheetQty:row.units_per_sheet }}</td>
-                  <td class="px-4 py-3 text-right font-semibold">{{ row.sold | sheetQty:row.units_per_sheet }}</td>
-                  <td class="px-4 py-3 text-right" [class.text-red-600]="row.remaining < 0">{{ row.remaining | sheetQty:row.units_per_sheet }}</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No sales data today.</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+      <!-- By Product — compact grid -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">By Product</h3>
+        @if (eodByProduct().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            @for (row of eodByProduct(); track row.item_id) {
+              <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
+                <span class="font-medium truncate">
+                  {{ row.hindi_name || row.item_name }}
+                  @if (row.wholesale_price_per_sheet) {
+                    <span class="text-xs text-indigo-500 ml-1">₹{{ row.wholesale_price_per_sheet * row.units_per_sheet }}</span>
+                  }
+                </span>
+                <span class="text-xs whitespace-nowrap text-gray-600">
+                  sold <b>{{ row.sold | sheetQty:row.units_per_sheet }}</b>
+                  · left <b [class.text-red-600]="row.remaining < 0">{{ row.remaining | sheetQty:row.units_per_sheet }}</b>
+                </span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-center text-gray-400 py-4 text-sm">No sales data today.</p>
+        }
+      </div>
     </section>
   }
 
@@ -129,14 +110,18 @@
           <span class="report-value text-amber-700">₹{{ monthlySummary().totalProfit | number:'1.0-0' }}</span>
         </div>
         <div class="report-card bg-rose-50 border-rose-200">
-          <span class="report-label">Total Expenses</span>
-          <span class="report-value text-rose-700">₹{{ monthlySummary().totalExpenses | number:'1.0-0' }}</span>
+          <span class="report-label">Overhead</span>
+          <span class="report-value text-rose-700">₹{{ (monthlySummary().overheadExpenses ?? monthlySummary().totalExpenses) | number:'1.0-0' }}</span>
         </div>
         <div class="report-card bg-sky-50 border-sky-200">
           <span class="report-label">Net Profit</span>
           <span class="report-value text-sky-700">₹{{ monthlySummary().netProfit | number:'1.0-0' }}</span>
         </div>
       </div>
+      <p class="text-xs text-gray-500 -mt-4 mb-6">
+        Stock purchased this month (materials, packing &amp; delivery — already in cost per sheet, not deducted from Net Profit):
+        ₹{{ (monthlySummary().stockPurchased ?? 0) | number:'1.0-0' }}.
+      </p>
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -162,6 +147,160 @@
         } @else {
           <p class="text-center text-gray-400 py-8 text-sm">No sales data for this month.</p>
         }
+      </div>
+
+      <!-- Item-wise sales + Expense breakdown -->
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-6">
+        <!-- Item-wise sales table -->
+        <div class="xl:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="px-4 pt-4">
+            <h2 class="text-lg font-bold">Item-wise Sales</h2>
+            <p class="text-sm text-gray-500">What sold this month — {{ selectedMonthLabel() }}</p>
+          </div>
+          <table class="min-w-full text-sm mt-3">
+            <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">Item</th>
+                <th class="px-4 py-3 text-right">Sheets</th>
+                <th class="px-4 py-3 text-right">Revenue</th>
+                <th class="px-4 py-3 text-right">Profit</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              @for (row of itemSales(); track row.item_id) {
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-2.5 font-medium">
+                    {{ row.hindi_name || row.item_name }}
+                    @if (row.mrp_per_unit) {
+                      <span class="text-xs text-indigo-500 ml-1">₹{{ row.mrp_per_unit }}</span>
+                    }
+                  </td>
+                  <td class="px-4 py-2.5 text-right">{{ row.sheets_sold | sheetQty:row.units_per_sheet }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono">₹{{ row.revenue | number:'1.0-0' }}</td>
+                  <td class="px-4 py-2.5 text-right font-mono font-semibold"
+                      [class.text-green-700]="row.profit >= 0" [class.text-red-600]="row.profit < 0">
+                    ₹{{ row.profit | number:'1.0-0' }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No sales this month.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Expense breakdown -->
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <h2 class="text-lg font-bold">Expense Breakdown</h2>
+          <p class="text-sm text-gray-500 mb-3">By category — {{ selectedMonthLabel() }}</p>
+          @if ((monthlySummary().expenseByCategory ?? []).length > 0) {
+            <ul class="divide-y divide-gray-100">
+              @for (e of monthlySummary().expenseByCategory; track e.category) {
+                <li class="flex items-center justify-between py-2.5 text-sm">
+                  <span class="font-medium">{{ e.category }}</span>
+                  <span class="font-mono font-semibold text-rose-700">₹{{ e.amount | number:'1.0-0' }}</span>
+                </li>
+              }
+            </ul>
+            <div class="flex items-center justify-between pt-3 mt-1 border-t border-gray-200 text-sm font-bold">
+              <span>Total</span>
+              <span class="font-mono text-rose-700">₹{{ monthlySummary().totalExpenses | number:'1.0-0' }}</span>
+            </div>
+          } @else {
+            <p class="text-center text-gray-400 py-6 text-sm">No expenses this month.</p>
+          }
+        </div>
+      </div>
+
+      <!-- Overall (all time) -->
+      @if (overall(); as o) {
+        <div class="mt-6">
+          <h2 class="text-lg font-bold">Overall <span class="text-sm font-normal text-gray-500">(all time
+            @if (o.firstSaleDate) { — since {{ o.firstSaleDate | date:'d MMM yyyy' }} }
+            · {{ o.salesCount }} sales · {{ o.totalSheets | number:'1.0-0' }} sheets)</span>
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-3">
+            <div class="report-card bg-emerald-50 border-emerald-200">
+              <span class="report-label">Revenue</span>
+              <span class="report-value text-emerald-700">₹{{ o.totalRevenue | number:'1.0-0' }}</span>
+            </div>
+            <div class="report-card bg-amber-50 border-amber-200">
+              <span class="report-label">Gross Profit</span>
+              <span class="report-value text-amber-700">₹{{ o.totalProfit | number:'1.0-0' }}</span>
+            </div>
+            <div class="report-card bg-rose-50 border-rose-200">
+              <span class="report-label">Overhead</span>
+              <span class="report-value text-rose-700">₹{{ (o.overheadExpenses ?? o.totalExpenses) | number:'1.0-0' }}</span>
+            </div>
+            <div class="report-card bg-sky-50 border-sky-200">
+              <span class="report-label">Net Profit</span>
+              <span class="report-value text-sky-700">₹{{ o.netProfit | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">
+            Stock purchased (materials, packing &amp; delivery — already inside cost per sheet, so <strong>not</strong> deducted from Net Profit):
+            ₹{{ (o.stockPurchased ?? 0) | number:'1.0-0' }}.
+            Net Profit = Gross Profit − Overhead only.
+          </p>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ── Payout Tab ──────────────────────────────────────── -->
+  @if (activeTab() === 'payout') {
+    <section>
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-xl font-bold">Delivery-Boy Payout</h2>
+          <p class="text-sm text-gray-500">
+            Commission owed per day — {{ selectedMonthLabel() }}. ₹5 @ full price ₹5/sheet (else ₹4); ₹10 @ full price ₹10/sheet (else ₹8); 50g pouches ₹2 each.
+          </p>
+        </div>
+        <button (click)="exportPayoutCSV()"
+          class="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-black font-semibold">
+          Export CSV
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+            <tr>
+              <th class="px-4 py-3 text-left">Date</th>
+              <th class="px-4 py-3 text-left">Delivery Boy</th>
+              <th class="px-4 py-3 text-right">₹5 Sheets</th>
+              <th class="px-4 py-3 text-right">₹10 Sheets</th>
+              <th class="px-4 py-3 text-right">50g Pkts</th>
+              <th class="px-4 py-3 text-right">Payout</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @for (row of payoutRows(); track row.date + row.delivery_boy_id) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 whitespace-nowrap">{{ row.date }}</td>
+                <td class="px-4 py-3 font-medium">{{ row.delivery_boy_name }}</td>
+                <td class="px-4 py-3 text-right">{{ row.sheets5 }}</td>
+                <td class="px-4 py-3 text-right">{{ row.sheets10 }}</td>
+                <td class="px-4 py-3 text-right">{{ row.packets }}</td>
+                <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ row.payout | number:'1.0-2' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No sales this month.</td></tr>
+            }
+          </tbody>
+          @if (payoutRows().length > 0) {
+            <tfoot class="bg-gray-50 font-semibold border-t border-gray-200">
+              <tr>
+                <td class="px-4 py-3" colspan="2">Total</td>
+                <td class="px-4 py-3 text-right">{{ payoutTotals().sheets5 }}</td>
+                <td class="px-4 py-3 text-right">{{ payoutTotals().sheets10 }}</td>
+                <td class="px-4 py-3 text-right">{{ payoutTotals().packets }}</td>
+                <td class="px-4 py-3 text-right font-mono text-green-700">₹{{ payoutTotals().payout | number:'1.0-2' }}</td>
+              </tr>
+            </tfoot>
+          }
+        </table>
       </div>
     </section>
   }

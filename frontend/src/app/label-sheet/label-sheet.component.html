@@ -1,4 +1,4 @@
-<div class="label-sheet" [class.no-ingredients]="!hasIngredients()">
+<div class="label-sheet" [class.no-ingredients]="!hasIngredients()" [class.size-big]="labelSize() === 'big'">
   @if (labels().length === 0) {
     <div style="padding: 40px 20px; text-align: center; color: #999; grid-column: 1 / -1; font-size: 16px;">
       <p>Go to Inventory page and click download labels on an item</p>

@@ -4,6 +4,7 @@ import { SaleModel } from '../models/sale.model';
 import { InventoryModel } from '../models/inventory.model';
 import { ShopModel } from '../models/shop.model';
 import { requireAdmin, requireSelfOrAdmin } from '../middleware/auth.middleware';
+import { computeProfit } from '../utils/profit.util';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ async function buildSaleItems(
   items: Array<{ item_id: string; sheets_sold: number; selling_price_per_sheet?: number; item_name?: string; hindi_name?: string; description?: string }>,
 ): Promise<Array<{ item_id: string; sheets_sold: number; wholesale_price_per_sheet: number; selling_price_per_sheet: number; final_price: number; profit: number; item_name: string; hindi_name: string; description: string }>> {
   const inventoryDocs = await InventoryModel.find({ _id: { $in: items.map((item) => item.item_id) } }).lean();
-  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number; units_per_sheet?: number }>(
+  const inventoryMap = new Map<string, { item_name?: string; hindi_name?: string; description?: string; wholesale_price_per_sheet?: number; units_per_sheet?: number; cost_per_sheet?: number; flat_profit_per_pouch?: number }>(
     inventoryDocs.map((doc) => [String(doc._id), doc])
   );
 
@@ -21,13 +22,15 @@ async function buildSaleItems(
     const units     = Math.max(1, inv?.units_per_sheet ?? 1);
     // Editable negotiated price; defaults to per-sheet wholesale (per-packet × units) when not provided.
     const sellingPerSheet = Math.max(0, item.selling_price_per_sheet ?? wholesale * units);
+    const finalPrice      = sellingPerSheet * item.sheets_sold;
     return {
       item_id:                   item.item_id,
       sheets_sold:               item.sheets_sold,
       wholesale_price_per_sheet: wholesale,
       selling_price_per_sheet:   sellingPerSheet,
-      final_price:               sellingPerSheet * item.sheets_sold,
-      profit:                    wholesale * units * 0.10 * item.sheets_sold,
+      final_price:               finalPrice,
+      // Real profit: flat ₹/pouch > real cost/sheet > legacy 10% fallback.
+      profit:                    computeProfit(finalPrice, item.sheets_sold, inv),
       item_name:                 inv?.item_name  ?? item.item_name  ?? '',
       hindi_name:                inv?.hindi_name ?? item.hindi_name ?? '',
       description:               inv?.description ?? item.description ?? '',
@@ -206,14 +209,17 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
       let profit: number;
       let sellingPerSheet: number;
 
+      // Real cost data present ⇒ computeProfit (flat ₹/pouch > cost/sheet).
+      const hasRealCost = ((inv as any)?.flat_profit_per_pouch ?? 0) > 0 || ((inv as any)?.cost_per_sheet ?? 0) > 0;
+
       if (row.saleType === 'retail') {
         // Retail: quantity is in individual packets; price is per packet (defaults to MRP).
-        // wholesale holds the per-packet wholesale cost, so profit = selling − wholesale per packet.
         packetsSold  = row.quantitySold;
         sheetsSold   = packetsSold / unitsPerSheet;           // fractional sheets consumed
         const sellingPerUnit = Math.max(0, row.sellingPrice || mrpPerUnit);
         finalPrice       = sellingPerUnit * packetsSold;
-        profit           = (sellingPerUnit - wholesale) * packetsSold;
+        // Uncosted retail keeps its own legacy: selling − per-packet wholesale.
+        profit           = hasRealCost ? computeProfit(finalPrice, sheetsSold, inv) : (sellingPerUnit - wholesale) * packetsSold;
         sellingPerSheet  = sellingPerUnit * unitsPerSheet;    // normalized per-sheet snapshot
       } else {
         // Wholesale: quantity is in sheets; price is per sheet (defaults to per-packet wholesale × units).
@@ -221,7 +227,8 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         packetsSold = null;
         sellingPerSheet = Math.max(0, row.sellingPrice || wholesale * unitsPerSheet);
         finalPrice  = sellingPerSheet * sheetsSold;
-        profit      = wholesale * unitsPerSheet * 0.10 * sheetsSold;
+        // computeProfit falls back to the legacy 10% formula when the item isn't costed.
+        profit      = computeProfit(finalPrice, sheetsSold, inv);
       }
 
       return {

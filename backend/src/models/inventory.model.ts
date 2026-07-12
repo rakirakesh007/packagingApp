@@ -56,6 +56,22 @@ const inventorySchema = new Schema(
       min: 0,
       default: 0,
     },
+    // cost_per_sheet: REAL production cost per sheet (raw material + labour +
+    // packing + delivery) from the owner's costing sheet. Used for true profit:
+    // profit = final_price − cost_per_sheet × sheets. 0 ⇒ not costed yet.
+    cost_per_sheet: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    // flat_profit_per_pouch: owner-quoted fixed profit per pouch (e.g. Cardamom/
+    // Garam Masala ₹5→₹1, ₹10→₹2). Takes PRECEDENCE over cost_per_sheet:
+    // profit = flat × units_per_sheet × sheets. 0 ⇒ unused.
+    flat_profit_per_pouch: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
     image_url: {
       type: String,
       trim: true,
