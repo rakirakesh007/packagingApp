@@ -32,9 +32,8 @@ finance, and staff payroll — separate from the live KPI Dashboard.
 ### 4. Payout (delivery-boy commission)
 - Month-scoped (reuses the global Month/Year picker); one row per **(date × delivery boy)**.
 - Columns: Date, Delivery Boy, ₹5 Sheets, ₹10 Sheets, Payout (₹), plus a month total footer row.
-- **Payout = commission the owner pays the boy**, a per-sheet rate that rewards full-price sales:
-  `rate = selling_price_per_sheet >= mrp×9 ? mrp : mrp×0.8`
-  → ₹5 item: ₹5/sheet at full price (45), else ₹4. ₹10 item: ₹10/sheet at full price (90), else ₹8.
+- **Payout = commission the owner pays the boy**, a FLAT per-sheet rate by variant, independent of selling price:
+  `rate = mrp × 0.8` → ₹5 item: ₹4/sheet. ₹10 item: ₹8/sheet. (50g packet-mode pouches: flat ₹2 each.)
   `payout = Σ rate × sheets_sold` per (date, boy). Variant is resolved from inventory `mrp_per_unit`.
 - Export CSV.
 

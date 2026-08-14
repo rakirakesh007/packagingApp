@@ -80,7 +80,7 @@
                 <span class="font-medium truncate">
                   {{ row.hindi_name || row.item_name }}
                   @if (row.wholesale_price_per_sheet) {
-                    <span class="text-xs text-indigo-500 ml-1">₹{{ row.wholesale_price_per_sheet * row.units_per_sheet }}</span>
+                    <span class="text-xs text-indigo-500 ml-1">₹{{ (row.wholesale_price_per_sheet * row.units_per_sheet) | number:'1.0-0' }}</span>
                   }
                 </span>
                 <span class="text-xs whitespace-nowrap text-gray-600">
@@ -254,7 +254,7 @@
         <div>
           <h2 class="text-xl font-bold">Delivery-Boy Payout</h2>
           <p class="text-sm text-gray-500">
-            Commission owed per day — {{ selectedMonthLabel() }}. ₹5 @ full price ₹5/sheet (else ₹4); ₹10 @ full price ₹10/sheet (else ₹8); 50g pouches ₹2 each.
+            Commission owed per day — {{ selectedMonthLabel() }}. Flat ₹4/sheet for ₹5 items, ₹8/sheet for ₹10 items; 50g pouches ₹2 each.
           </p>
         </div>
         <button (click)="exportPayoutCSV()"

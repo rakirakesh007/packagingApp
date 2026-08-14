@@ -71,7 +71,7 @@
                         <span class="text-xs text-gray-400 ml-1">({{ opt.item_name }})</span>
                       }
                       <span class="text-xs text-gray-400 ml-2">
-                        ₹{{ opt.wholesale_price_per_sheet }}/sheet &nbsp;|&nbsp; ₹{{ opt.mrp_per_unit ?? 0 }}/pkt
+                        ₹{{ (opt.wholesale_price_per_sheet * opt.units_per_sheet) | number:'1.0-0' }}/sheet &nbsp;|&nbsp; ₹{{ opt.mrp_per_unit ?? 0 }}/pkt
                       </span>
                     </mat-option>
                   }

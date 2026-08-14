@@ -30,7 +30,7 @@ router.get('/catalog', async (_req: Request, res: Response) => {
         item_name:        (d as any).item_name ?? '',
         hindi_name:       (d as any).hindi_name ?? '',
         units_per_sheet:  units,
-        price_per_sheet:  perPacket * units,
+        price_per_sheet:  Math.round(perPacket * units),
         sheets_available:  Math.floor((d as any).total_stock ?? 0),
         search_aliases:    (d as any).search_aliases ?? '',
         mrp_per_unit:      (d as any).mrp_per_unit ?? 0,

@@ -20,8 +20,9 @@ async function buildSaleItems(
     const inv = inventoryMap.get(item.item_id);
     const wholesale = inv?.wholesale_price_per_sheet ?? 0; // per-packet wholesale
     const units     = Math.max(1, inv?.units_per_sheet ?? 1);
-    // Editable negotiated price; defaults to per-sheet wholesale (per-packet × units) when not provided.
-    const sellingPerSheet = Math.max(0, item.selling_price_per_sheet ?? wholesale * units);
+    // Editable negotiated price; defaults to per-sheet wholesale (per-packet × units,
+    // rounded to a clean integer) when not provided.
+    const sellingPerSheet = Math.max(0, item.selling_price_per_sheet ?? Math.round(wholesale * units));
     const finalPrice      = sellingPerSheet * item.sheets_sold;
     return {
       item_id:                   item.item_id,
@@ -225,7 +226,7 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         // Wholesale: quantity is in sheets; price is per sheet (defaults to per-packet wholesale × units).
         sheetsSold  = row.quantitySold;
         packetsSold = null;
-        sellingPerSheet = Math.max(0, row.sellingPrice || wholesale * unitsPerSheet);
+        sellingPerSheet = Math.max(0, row.sellingPrice || Math.round(wholesale * unitsPerSheet));
         finalPrice  = sellingPerSheet * sheetsSold;
         // computeProfit falls back to the legacy 10% formula when the item isn't costed.
         profit      = computeProfit(finalPrice, sheetsSold, inv);

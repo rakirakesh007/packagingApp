@@ -154,7 +154,7 @@ export class InventoryPage implements OnInit {
     this.formUnitsPerSheet          = item.units_per_sheet ?? 10;
     this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
     this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
-    this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
+    this.formWholesalePricePerSheet = Math.round((item.wholesale_price_per_sheet ?? 0) * (item.units_per_sheet ?? 1));
     this.formCostPerSheet           = item.cost_per_sheet ?? 0;
     this.formFlatProfitPerPouch     = item.flat_profit_per_pouch ?? 0;
     this.formStock       = item.total_stock;
@@ -216,7 +216,8 @@ export class InventoryPage implements OnInit {
       units_per_sheet:            Number(this.formUnitsPerSheet) || 10,
       quantity_per_unit:          Number(this.formQuantityPerUnit) || 0,
       mrp_per_unit:               Number(this.formMrpPerUnit) || 0,
-      wholesale_price_per_sheet:  Number(this.formWholesalePricePerSheet) || 0,
+      // Form edits price PER SHEET; the field stores per-packet (÷ units) for legacy compatibility.
+      wholesale_price_per_sheet:  (Number(this.formWholesalePricePerSheet) || 0) / (Number(this.formUnitsPerSheet) || 1),
       cost_per_sheet:             Number(this.formCostPerSheet) || 0,
       flat_profit_per_pouch:      Number(this.formFlatProfitPerPouch) || 0,
       total_stock:                Number(this.formStock) || 0,
@@ -257,7 +258,7 @@ export class InventoryPage implements OnInit {
     this.formUnitsPerSheet          = item.units_per_sheet ?? 10;
     this.formQuantityPerUnit        = item.quantity_per_unit ?? 0;
     this.formMrpPerUnit             = item.mrp_per_unit ?? 0;
-    this.formWholesalePricePerSheet = item.wholesale_price_per_sheet ?? 0;
+    this.formWholesalePricePerSheet = Math.round((item.wholesale_price_per_sheet ?? 0) * (item.units_per_sheet ?? 1));
     this.formCostPerSheet           = item.cost_per_sheet ?? 0;
     this.formFlatProfitPerPouch     = item.flat_profit_per_pouch ?? 0;
     this.formStock       = 0;

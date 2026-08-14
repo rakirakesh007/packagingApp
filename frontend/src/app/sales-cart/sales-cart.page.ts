@@ -175,7 +175,9 @@ export class SalesCartPage implements OnInit {
 
   /** Default per-sheet selling price = per-packet wholesale × units per sheet. */
   sheetPrice(item: InventoryItem): number {
-    return (item.wholesale_price_per_sheet ?? 0) * this.unitsFor(item.id);
+    // Field holds per-packet wholesale; sheet price = × units, rounded to a clean
+    // integer (₹85 ÷ 12 = 7.0833 stored, ×12 = 84.9996 → round → ₹85).
+    return Math.round((item.wholesale_price_per_sheet ?? 0) * this.unitsFor(item.id));
   }
 
   increment(id: string): void {

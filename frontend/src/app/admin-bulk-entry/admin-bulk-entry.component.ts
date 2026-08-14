@@ -149,7 +149,7 @@ export class AdminBulkEntryComponent implements OnInit {
     const v = row.getRawValue();
     const defaultPrice = type === 'retail'
       ? (v.mrp_per_unit ?? 0)
-      : (v.wholesale_price_per_sheet ?? 0) * (v.units_per_sheet ?? 1);
+      : Math.round((v.wholesale_price_per_sheet ?? 0) * (v.units_per_sheet ?? 1));
     row.patchValue({ sale_type: type, selling_price: defaultPrice });
     this.recalcTotals();
   }

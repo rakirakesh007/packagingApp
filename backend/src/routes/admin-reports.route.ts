@@ -446,10 +446,9 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
 /**
  * GET /admin/reports/boy-payout?month=&year= — Delivery-boy commission owed.
  *
- * One row per (IST date × delivery boy). Commission is a per-sheet rate that
- * depends on the ₹-variant and whether the sheet was sold at full price:
- *   rate = selling_price_per_sheet >= mrp*9 ? mrp : mrp*0.8
- *     ₹5  → 5 at full price (45), else 4;   ₹10 → 10 at full price (90), else 8.
+ * One row per (IST date × delivery boy). Commission is a FLAT per-sheet rate by
+ * ₹-variant, regardless of the selling price:
+ *   rate = mrp × 0.8   →   ₹5 → ₹4/sheet,   ₹10 → ₹8/sheet.
  *   payout_line = rate × sheets_sold, summed per (date, boy).
  * sheets5 / sheets10 tally sheets by variant (all current inventory is ₹5/₹10).
  */
@@ -501,7 +500,6 @@ router.get('/boy-payout', async (req: Request, res: Response) => {
         const mrp    = mrpMap.get(String(item.item_id)) ?? 0;
         const mode   = modeMap.get(String(item.item_id)) ?? 'sheet';
         const sheets = (item as any).sheets_sold ?? 0;
-        const price  = (item as any).selling_price_per_sheet ?? 0;
         if (sheets <= 0) return;
         // Packet-mode items (50g pouches, units_per_sheet=1) earn a flat per-pouch
         // commission — the ₹5/₹10 per-sheet rate does not apply to them.
@@ -511,7 +509,9 @@ router.get('/boy-payout', async (req: Request, res: Response) => {
           return;
         }
         if (mrp <= 0) return;
-        const rate = price >= mrp * 9 ? mrp : mrp * 0.8;
+        // Flat commission per sheet by variant: ₹5 → ₹4, ₹10 → ₹8 (mrp × 0.8),
+        // regardless of the selling price.
+        const rate = mrp * 0.8;
         row.payout += rate * sheets;
         if (mrp === 5)  row.sheets5  += sheets;
         else if (mrp === 10) row.sheets10 += sheets;
