@@ -451,6 +451,10 @@ router.get('/staff-monthly', async (req: Request, res: Response) => {
  *   rate = mrp × 0.8   →   ₹5 → ₹4/sheet,   ₹10 → ₹8/sheet.
  *   payout_line = rate × sheets_sold, summed per (date, boy).
  * sheets5 / sheets10 tally sheets by variant (all current inventory is ₹5/₹10).
+ *
+ * Pack size: the rate above assumes a 12-pouch sheet. Items with units_per_sheet
+ * of 10 earn ZERO commission until a 10-pouch rate is agreed — their sheets still
+ * appear in the sheets5/sheets10 counts, they just contribute ₹0 to payout.
  */
 router.get('/boy-payout', async (req: Request, res: Response) => {
   try {
@@ -467,10 +471,11 @@ router.get('/boy-payout', async (req: Request, res: Response) => {
     // sale_mode 'packet' items (e.g. 50g pouches) use a flat per-pouch commission.
     const itemIds = [...new Set(sales.flatMap(s => s.items.map(i => String(i.item_id))))];
     const invDocs = itemIds.length
-      ? await InventoryModel.find({ _id: { $in: itemIds } }, { mrp_per_unit: 1, sale_mode: 1 }).lean()
+      ? await InventoryModel.find({ _id: { $in: itemIds } }, { mrp_per_unit: 1, sale_mode: 1, units_per_sheet: 1 }).lean()
       : [];
-    const mrpMap  = new Map(invDocs.map(d => [String(d._id), (d as any).mrp_per_unit ?? 0]));
-    const modeMap = new Map(invDocs.map(d => [String(d._id), (d as any).sale_mode ?? 'sheet']));
+    const mrpMap   = new Map(invDocs.map(d => [String(d._id), (d as any).mrp_per_unit ?? 0]));
+    const modeMap  = new Map(invDocs.map(d => [String(d._id), (d as any).sale_mode ?? 'sheet']));
+    const unitsMap = new Map(invDocs.map(d => [String(d._id), (d as any).units_per_sheet ?? 12]));
 
     // Resolve delivery-boy names.
     const boyIds = [...new Set(sales.map(s => String(s.delivery_boy_id)).filter(id => id && id !== 'null'))];
@@ -509,9 +514,13 @@ router.get('/boy-payout', async (req: Request, res: Response) => {
           return;
         }
         if (mrp <= 0) return;
+        // 10-pouch sheets earn NO commission for now — the per-sheet rate below is
+        // calibrated for 12-pouch sheets and a rate for 10-pouch has not been set yet.
+        // Their sheets still tally into sheets5/sheets10 so the volume stays visible.
+        const isTenPouch = unitsMap.get(String(item.item_id)) === 10;
         // Flat commission per sheet by variant: ₹5 → ₹4, ₹10 → ₹8 (mrp × 0.8),
         // regardless of the selling price.
-        const rate = mrp * 0.8;
+        const rate = isTenPouch ? 0 : mrp * 0.8;
         row.payout += rate * sheets;
         if (mrp === 5)  row.sheets5  += sheets;
         else if (mrp === 10) row.sheets10 += sheets;
