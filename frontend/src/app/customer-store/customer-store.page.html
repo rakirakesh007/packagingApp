@@ -117,7 +117,12 @@
               @if (variantLabel(v)) {
                 <span class="variant-size">{{ variantLabel(v) }}</span>
               }
-              <span class="variant-price">₹{{ v.price_per_sheet }}<span class="variant-per">{{ v.sale_mode === 'packet' ? '/pkt' : '/sheet' }}</span></span>
+              <span class="variant-price">
+                ₹{{ v.price_per_sheet }}<span class="variant-per">{{ v.sale_mode === 'packet' ? '/pkt' : '/sheet' }}</span>
+                @if (v.sale_mode !== 'packet') {
+                  <span class="variant-pack-count">({{ v.units_per_sheet }} pkt in sheet)</span>
+                }
+              </span>
             </div>
             <div class="variant-controls">
               @if (getQty(v.id) > 0) {

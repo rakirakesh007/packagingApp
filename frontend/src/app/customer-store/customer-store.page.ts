@@ -84,25 +84,27 @@ export class CustomerStorePage implements OnInit {
     if (this.lang() === 'hi') return item.hindi_name ? item.item_name : '';
     return item.item_name && item.hindi_name ? item.hindi_name : '';
   }
-  /** Variant label: variant_name → quantity_per_unit+'g' → mrp_per_unit fallback. */
+  /** Variant label: variant_name (e.g. '50g' packets) on its own, otherwise
+   *  pack weight + per-pouch MRP together, e.g. "8g · ₹5/pkt". */
   variantLabel(item: CatalogItem): string {
     if (item.variant_name) return item.variant_name;
-    if (item.quantity_per_unit) return `${item.quantity_per_unit}g`;
-    if (item.mrp_per_unit) return `₹${item.mrp_per_unit}/pkt`;
-    return '';
+    const parts: string[] = [];
+    if (item.quantity_per_unit) parts.push(`${item.quantity_per_unit}g`);
+    if (item.mrp_per_unit) parts.push(`₹${item.mrp_per_unit}/pkt`);
+    return parts.join(' · ');
   }
 
   variant(item: CatalogItem): string { return this.variantLabel(item); }
 
   // ── Category tabs ─────────────────────────────────────────────────────────
   readonly catDefs = [
-    { name: 'Powder Spices',     hindi: 'पाउडर मसाले',        emoji: '🌶️' },
     { name: 'Whole Spices',      hindi: 'साबुत मसाले',         emoji: '🌿' },
+    { name: 'Masala Powder',     hindi: 'मसाला पाउडर',        emoji: '🌶️' },
     { name: 'Mix Masala Whole',  hindi: 'मिक्स मसाला (साबुत)', emoji: '🫙' },
-    { name: 'Mix Masala Powder', hindi: 'मिक्स मसाला (पाउडर)', emoji: '✨' },
+    { name: 'Dry Fruits',        hindi: 'ड्राई फ्रूट्स',       emoji: '🥜' },
   ];
 
-  selectedCategory = signal('Powder Spices');
+  selectedCategory = signal('Whole Spices');
 
   selectCategory(name: string): void {
     this.selectedCategory.set(name);
