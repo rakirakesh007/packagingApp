@@ -1,53 +1,100 @@
-<div class="store">
+<div class="store" (window:scroll)="onScroll()">
 
   <!-- Header -->
   <header class="store-header">
     <div class="brand-row">
-      <h1 class="brand">🌶️ {{ t('brand') }}</h1>
+      <h1 class="brand">
+        <img class="brand-mark" src="assets/logo-mark.jpg" alt="" />
+        <span>{{ t('brand') }}</span>
+      </h1>
       <button class="lang-toggle" (click)="toggleLang()" type="button">
         {{ lang() === 'en' ? 'हिंदी' : 'EN' }}
       </button>
     </div>
-    <p class="tagline">{{ t('tagline') }}</p>
-    <input
-      type="search"
-      class="search-input"
-      [placeholder]="t('search')"
-      [ngModel]="searchQuery()"
-      (ngModelChange)="searchQuery.set($event)"
-      autocomplete="off"
-    />
+    <div class="search-wrap">
+      <input
+        type="search"
+        class="search-input"
+        [placeholder]="t('search')"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        autocomplete="off"
+      />
+      @if (isSearching()) {
+        <button type="button" class="search-clear" (click)="clearSearch()" aria-label="Clear">✕</button>
+      }
+    </div>
+
+    @if (!isSearching()) {
+      <div class="cat-strip">
+        @for (def of catDefs; track def.name) {
+          <button
+            type="button"
+            class="cat-chip"
+            [class.active]="selectedCategory() === def.name"
+            (click)="selectCategory(def.name)"
+          >
+            <span class="cat-emoji">{{ def.emoji }}</span>
+            {{ lang() === 'hi' ? def.hindi : def.name }}
+            <span class="cat-count">{{ countFor(def.name) }}</span>
+          </button>
+        }
+      </div>
+    }
   </header>
 
   <!-- Trust badges — flat colored pills, clearly different from category cards -->
   <div class="badges">
+    <span class="badge b-purple">✅ {{ t('badgeQualTitle') }}</span>
     <span class="badge b-orange">🏡 {{ t('badgeBiharTitle') }}</span>
     <span class="badge b-green">🌾 {{ t('badgeFarmTitle') }}</span>
     <span class="badge b-green">💵 {{ t('badgeCODTitle') }}</span>
-    <span class="badge b-blue">🧴 {{ t('badgeHygTitle') }}</span>
-    <span class="badge b-purple">✅ {{ t('badgeQualTitle') }}</span>
-    <span class="badge b-teal">🚚 {{ t('badgeFreeTitle') }}</span>
   </div>
 
-  <!-- Category cards — compact horizontal rows, 2 per row -->
-  @if (!isSearching()) {
-    <div class="cat-grid">
-      @for (def of catDefs; track def.name) {
-        <button
-          class="cat-card"
-          [class.active]="selectedCategory() === def.name"
-          (click)="selectCategory(def.name)"
-          type="button"
-        >
-          <span class="cat-emoji">{{ def.emoji }}</span>
-          <span class="cat-label">
-            {{ lang() === 'hi' ? def.hindi : def.name }}
-            <span class="cat-count">({{ countFor(def.name) }})</span>
-          </span>
-        </button>
-      }
+  <!-- Hero — carries the promise, the price hook and the delivery terms in one
+       block, so the page opens with a reason to stay rather than three strips. -->
+  <section class="hero">
+    <img class="hero-logo" src="assets/logo-mark.jpg" alt="DesiMasalaHub" />
+    <p class="hero-line">{{ t('heroLine') }}</p>
+    <p class="hero-hook">{{ heroHookText() }}</p>
+    <p class="hero-free">{{ t('freeDelivery') }}</p>
+  </section>
+
+  @if (canInstall()) {
+    <div class="install-card">
+      <span class="install-icon">📱</span>
+      <span class="install-text">
+        <span class="install-title">{{ t('installTitle') }}</span>
+        <span class="install-sub">{{ t('installSub') }}</span>
+      </span>
+      <span class="install-actions">
+        <button type="button" class="install-go" (click)="installApp()">{{ t('installBtn') }}</button>
+        <button type="button" class="install-no" (click)="dismissInstall()">{{ t('installLater') }}</button>
+      </span>
     </div>
   }
+
+  <!-- 25-sheet free offer — live against the cart, like the delivery nudge -->
+  <div class="offer-strip" [class.earned]="earnedFreeSheet()">
+    <span class="offer-star">★</span>
+    <span class="offer-body">
+      <span class="offer-title">{{ t('offerTitle') }}</span>
+      <span class="offer-sub">{{ offerText() }}</span>
+    </span>
+  </div>
+
+  <!-- One-tap repeat order, remembered on this device -->
+  @if (canReorder()) {
+    <button type="button" class="reorder-card" (click)="reorder()">
+      <span class="reorder-icon">🔁</span>
+      <span class="reorder-text">
+        <span class="reorder-title">{{ t('reorderTitle') }}</span>
+        <span class="reorder-sub">{{ reorderItems().length }} {{ t('items') }} · {{ t('reorderSub') }}</span>
+      </span>
+      <span class="reorder-go">{{ t('reorderBtn') }}</span>
+    </button>
+  }
+
 
   <!-- Section heading -->
   <div class="section-heading">
@@ -64,6 +111,14 @@
 
   <!-- Compact product cards — tap to open variant picker sheet -->
   <div class="items">
+    @if (catalogLoading()) {
+      @for (sk of skeletons; track $index) {
+        <div class="sk-card">
+          <div class="sk-line sk-name"></div>
+          <div class="sk-line sk-meta"></div>
+        </div>
+      }
+    }
     @for (group of groupedItems(); track group.item_name) {
       <button
         type="button"
@@ -74,11 +129,17 @@
         <div class="product-info">
           <span class="product-name">
             {{ lang() === 'hi' ? (group.hindi_name || group.item_name) : (group.item_name || group.hindi_name) }}
+            @if (group.hindi_name && group.item_name) {
+              <span class="product-alt">{{ lang() === 'hi' ? group.item_name : group.hindi_name }}</span>
+            }
           </span>
-          @if (group.hindi_name && group.item_name) {
-            <span class="product-sub">{{ lang() === 'hi' ? group.item_name : group.hindi_name }}</span>
-          }
-          <span class="size-hint">{{ group.variants.length }} {{ group.variants.length === 1 ? 'size' : 'sizes' }} available</span>
+          <span class="product-meta">
+            <span class="product-price">{{ groupPriceLabel(group) }}</span>
+            @if (groupMaxSavingPct(group) > 0) {
+              <span class="save-pill">{{ groupMaxSavingPct(group) }}% {{ t('offMrp') }}</span>
+            }
+            <span class="size-hint">{{ group.variants.length }} {{ group.variants.length === 1 ? t('size') : t('sizeShort') }}</span>
+          </span>
         </div>
         <div class="product-right">
           @if (groupCartQty(group) > 0) {
@@ -89,9 +150,73 @@
         </div>
       </button>
     } @empty {
-      <div class="empty">{{ t('noItems') }}</div>
+      @if (catalogError()) {
+        <div class="load-error">
+          <p class="load-error-title">{{ t('loadFailed') }}</p>
+          <p class="load-error-sub">{{ t('loadFailedSub') }}</p>
+          <button type="button" class="load-retry" (click)="loadCatalog()">{{ t('retry') }}</button>
+        </div>
+      } @else if (!catalogLoading()) {
+        <div class="empty">{{ t('noItems') }}</div>
+      }
     }
   </div>
+
+  <!-- Bulk rate card — reference only; the cart always charges the 1–10 rate -->
+  <div class="slab-card">
+    <button type="button" class="slab-toggle" (click)="toggleSlabs()">
+      <span>📦 {{ t('bulkTitle') }}</span>
+      <span class="slab-chevron" [class.open]="showSlabs()">›</span>
+    </button>
+
+    @if (showSlabs()) {
+      <div class="slab-body">
+        @for (tbl of slabTables; track tbl.titleKey) {
+          <p class="slab-subtitle">{{ t(tbl.titleKey) }}</p>
+          <table class="slab-table">
+            <thead>
+              <tr>
+                <th>{{ t('bulkQty') }}</th>
+                @for (h of tbl.headers; track h) { <th>{{ h }}</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of tbl.rows; track r.range) {
+                <tr>
+                  <td class="slab-range">{{ r.range }}</td>
+                  @for (p of r.prices; track $index) { <td>₹{{ p }}</td> }
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+        <p class="slab-note">{{ t('bulkAtDelivery') }}</p>
+      </div>
+    }
+  </div>
+
+  <!-- Custom packing — pouch sizes and whole spices to order -->
+  <div class="pitch-card pitch-custom">
+    <div class="pitch-head">
+      <span class="pitch-emoji">🧵</span>
+      <span>
+        <span class="pitch-title">{{ t('customTitle') }}</span>
+        <span class="pitch-sub">{{ t('customPouch') }}</span>
+        <span class="pitch-sub">{{ t('customWhole') }}</span>
+      </span>
+    </div>
+    <button type="button" class="pitch-btn" (click)="askCustomPack()">{{ t('customBtn') }} →</button>
+  </div>
+
+  <!-- Share — the shop spreads by forwarding, so make that one tap -->
+  <button type="button" class="share-btn" (click)="shareStore()">
+    <span class="share-icon">📤</span>{{ t('shareStore') }}
+  </button>
+
+  <!-- Pre-sale enquiry — the only path to the owner used to be a full order -->
+  <button type="button" class="ask-btn" (click)="askQuestion()">
+    <span class="ask-icon">💬</span>{{ t('askQuestion') }}
+  </button>
 
   <!-- Variant picker bottom sheet -->
   @if (activeGroup()) {
@@ -118,9 +243,13 @@
                 <span class="variant-size">{{ variantLabel(v) }}</span>
               }
               <span class="variant-price">
-                ₹{{ v.price_per_sheet }}<span class="variant-per">{{ v.sale_mode === 'packet' ? '/pkt' : '/sheet' }}</span>
+                ₹{{ v.price_per_sheet }}<span class="variant-per">{{ v.sale_mode === 'packet' ? t('perPkt') : t('perSheet') }}</span>
+                @if (savingFor(v) > 0) {
+                  <span class="variant-mrp">₹{{ mrpSheetValue(v) }}</span>
+                  <span class="variant-save">{{ t('save') }} ₹{{ savingFor(v) }}</span>
+                }
                 @if (v.sale_mode !== 'packet') {
-                  <span class="variant-pack-count">({{ v.units_per_sheet }} pkt in sheet)</span>
+                  <span class="variant-pack-count">({{ packLabel(v) }})</span>
                 }
               </span>
             </div>
@@ -151,6 +280,20 @@
     </div>
   }
 
+  <!-- Footer — FSSAI licence is the strongest trust signal for packaged food -->
+  <footer class="store-footer">
+    <p class="footer-fssai">
+      <img class="footer-fssai-mark" src="assets/fssai-mark.png" alt="FSSAI" />
+      <span>{{ t('fssai') }}</span>
+    </p>
+    <p class="footer-note">{{ t('footerNote') }}</p>
+    <p class="footer-wa">📞 +91 8050991832</p>
+  </footer>
+
+  @if (showTopBtn()) {
+    <button type="button" class="to-top" (click)="scrollToTop()" aria-label="Top">↑</button>
+  }
+
   <!-- Sticky cart bar -->
   @if (cartCount() > 0 && !orderPlaced()) {
     <div class="cart-bar">
@@ -174,13 +317,20 @@
       <div class="sheet-handle"></div>
       <h2 class="sheet-title">{{ t('orderDetails') }}</h2>
 
+      @if (hasSavedDetails()) {
+        <div class="saved-note">
+          <span>✓ {{ t('savedDetails') }}</span>
+          <button type="button" class="saved-clear" (click)="clearDetails()">{{ t('clearDetails') }}</button>
+        </div>
+      }
+
       <!-- Order review -->
       <div class="review">
         @for (l of cartLines(); track l.item.id) {
           <div class="review-line">
             <span>
               {{ l.sheets }} × {{ displayName(l.item) }}
-              <span class="review-unit">@ ₹{{ l.item.price_per_sheet }}/{{ l.item.sale_mode === 'packet' ? 'pkt' : 'sheet' }}</span>
+              <span class="review-unit">@ ₹{{ l.item.price_per_sheet }}{{ l.item.sale_mode === 'packet' ? t('perPkt') : t('perSheet') }}</span>
             </span>
             <span>₹{{ l.sheets * l.item.price_per_sheet }}</span>
           </div>
@@ -197,6 +347,9 @@
             <span>₹{{ deliveryFee() }}</span>
           }
         </div>
+        @if (cartCount() >= 11) {
+          <p class="review-bulk">{{ t('bulkAtDelivery') }}</p>
+        }
         <div class="review-total">
           <strong>{{ t('total') }}</strong>
           <strong>₹{{ grandTotal() }}</strong>
@@ -210,7 +363,7 @@
       </label>
       <label class="field">
         <span>{{ t('phone') }}</span>
-        <input type="tel" maxlength="10" [placeholder]="t('phonePh')" [ngModel]="custPhone()" (ngModelChange)="custPhone.set($event)" />
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="10" [placeholder]="t('phonePh')" [ngModel]="custPhone()" (ngModelChange)="custPhone.set($event)" />
       </label>
       <label class="field">
         <span>{{ t('address') }}</span>
