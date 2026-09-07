@@ -32,3 +32,6 @@ frontend/.output/
 
 # Misc
 *.tgz
+
+# Design source files (originals). Derivatives in src/assets are what ship.
+frontend/design-assets/

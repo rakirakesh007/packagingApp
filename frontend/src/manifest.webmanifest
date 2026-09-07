@@ -1,12 +1,12 @@
 {
-  "name": "DesiMasalaHub",
+  "name": "DesiMasalaHub — देसी मसाला हब",
   "short_name": "DesiMasala",
-  "description": "Spice distribution — sales, inventory and delivery management",
-  "theme_color": "#b91c1c",
+  "description": "ताज़े और शुद्ध मसाले, घर तक — order fresh spices direct from the farm.",
+  "theme_color": "#f97316",
   "background_color": "#ffffff",
   "display": "standalone",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/customer",
   "icons": [
     { "src": "assets/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png", "purpose": "maskable any" },
     { "src": "assets/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png", "purpose": "maskable any" },

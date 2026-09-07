@@ -6,6 +6,70 @@ $theme: mat.define-theme((
 ));
 html { @include mat.all-component-themes($theme); }
 
+
+/* ── DesiMasalaHub design tokens ───────────────────────────────────────────
+   Single source of truth for brand colour. Change a value here and every
+   surface that uses it follows — no find-and-replace across component files. */
+:root {
+  /* Brand */
+  --dmh-brand:        #f97316;
+  --dmh-brand-dark:   #c2410c;
+  --dmh-brand-deep:   #b45309;
+  --dmh-brand-soft:   #fff7ed;
+  --dmh-brand-tint:   #fed7aa;
+  --dmh-brand-light:  #fb923c;
+
+  /* Ink / text */
+  --dmh-ink:          #1e293b;
+  --dmh-ink-strong:   #334155;
+  --dmh-ink-mid:      #475569;
+  --dmh-ink-soft:     #64748b;
+  --dmh-muted:        #94a3b8;
+
+  /* Surfaces */
+  --dmh-surface:      #fff;
+  --dmh-surface-alt:  #f8fafc;
+  --dmh-surface-warm: #f8f9fa;
+  --dmh-bg:           #f1f5f9;
+  --dmh-border:       #e2e8f0;
+  --dmh-border-soft:  #cbd5e1;
+
+  /* Semantic */
+  --dmh-success:      #16a34a;
+  --dmh-success-dark: #15803d;
+  --dmh-success-deep: #166534;
+  --dmh-success-soft: #f0fdf4;
+  --dmh-success-tint: #dcfce7;
+  --dmh-success-mint: #ecfdf5;
+  --dmh-success-ink:  #047857;
+  --dmh-success-pale: #bbf7d0;
+  --dmh-success-lite: #4ade80;
+
+  --dmh-danger:       #b91c1c;
+  --dmh-danger-mid:   #dc2626;
+  --dmh-danger-soft:  #fef2f2;
+
+  --dmh-info:         #1d4ed8;
+  --dmh-info-soft:    #eff6ff;
+  --dmh-info-tint:    #bfdbfe;
+
+  --dmh-purple:       #7e22ce;
+  --dmh-purple-soft:  #faf5ff;
+  --dmh-teal:         #0f766e;
+  --dmh-teal-soft:    #f0fdfa;
+  --dmh-amber:        #fbbf24;
+  --dmh-whatsapp:     #25d366;
+
+  /* Elevation */
+  --dmh-shadow-sm:    0 1px 4px rgba(0,0,0,0.06);
+  --dmh-shadow-md:    0 2px 8px rgba(0,0,0,0.08);
+
+  /* Radius */
+  --dmh-r-sm: 10px;
+  --dmh-r-md: 14px;
+  --dmh-r-pill: 20px;
+}
+
 /* Global Styles */
 * {
   box-sizing: border-box;
