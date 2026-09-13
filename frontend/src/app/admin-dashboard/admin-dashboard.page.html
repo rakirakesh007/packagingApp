@@ -12,20 +12,33 @@
   <!-- KPI Cards -->
   <div class="kpi-grid">
     <div class="kpi-card green">
-      <span class="kpi-label">Today's Revenue</span>
-      <span class="kpi-value">&#x20B9;{{ todayStats().totalRevenue | number:'1.0-0' }}</span>
+      <span class="kpi-label">This Week's Revenue</span>
+      <span class="kpi-value">&#x20B9;{{ weekStats().totalRevenue | number:'1.0-0' }}</span>
+      @if (vsLastWeek(weekStats().totalRevenue, weekStats().lastWeek.totalRevenue); as d) {
+        <span class="kpi-delta" [class.down]="!d.up">{{ d.up ? '&#9650;' : '&#9660;' }} {{ d.pct }}% vs last week</span>
+      }
     </div>
     <div class="kpi-card blue">
-      <span class="kpi-label">Orders Today</span>
-      <span class="kpi-value">{{ todayStats().totalSales }}</span>
+      <span class="kpi-label">Orders This Week</span>
+      <span class="kpi-value">{{ weekStats().totalSales }}</span>
+      @if (vsLastWeek(weekStats().totalSales, weekStats().lastWeek.totalSales); as d) {
+        <span class="kpi-delta" [class.down]="!d.up">{{ d.up ? '&#9650;' : '&#9660;' }} {{ d.pct }}% vs last week</span>
+      }
     </div>
     <div class="kpi-card orange">
-      <span class="kpi-label">Cash Collected</span>
-      <span class="kpi-value">&#x20B9;{{ todayStats().cashCollected | number:'1.0-0' }}</span>
+      <span class="kpi-label">Cash Collected — Week</span>
+      <span class="kpi-value">&#x20B9;{{ weekStats().cashCollected | number:'1.0-0' }}</span>
+      @if (vsLastWeek(weekStats().cashCollected, weekStats().lastWeek.cashCollected); as d) {
+        <span class="kpi-delta" [class.down]="!d.up">{{ d.up ? '&#9650;' : '&#9660;' }} {{ d.pct }}% vs last week</span>
+      }
     </div>
     <div class="kpi-card purple">
-      <span class="kpi-label">Today's Profit</span>
-      <span class="kpi-value">&#x20B9;{{ todayStats().totalProfit | number:'1.0-0' }}</span>
+      <span class="kpi-label">Profit This Week</span>
+      <span class="kpi-value">&#x20B9;{{ weekStats().totalProfit | number:'1.0-0' }}</span>
+      @if (vsLastWeek(weekStats().totalProfit, weekStats().lastWeek.totalProfit); as d) {
+        <span class="kpi-delta" [class.down]="!d.up">{{ d.up ? '&#9650;' : '&#9660;' }} {{ d.pct }}% vs last week</span>
+      }
+      <span class="kpi-note">before overheads — see Net Profit below</span>
     </div>
   </div>
 
@@ -38,6 +51,22 @@
       <a routerLink="/app/inventory"  class="action-btn">&#x1F4E6; Update Inventory</a>
       <a routerLink="/app/reports"    class="action-btn">&#x1F4CA; View Reports</a>
     </div>
+  </div>
+
+  <!-- Best-Selling This Week -->
+  <div class="card">
+    <h2 class="card-title">&#x1F3C6; Best-Selling — Last 7 Days</h2>
+    @for (item of weekStats().topItems; track item.item_id) {
+      <div class="bestseller-row">
+        <span class="bestseller-name">{{ item.hindi_name || item.item_name }}</span>
+        <div class="bestseller-bar-track">
+          <div class="bestseller-bar" [style.width.%]="(item.sheets_sold / topItemMax()) * 100"></div>
+        </div>
+        <span class="bestseller-qty">{{ item.sheets_sold | sheetQty:item.units_per_sheet }}</span>
+      </div>
+    } @empty {
+      <p class="empty-msg">No sales in the last 7 days.</p>
+    }
   </div>
 
   <!-- Two-column section -->
@@ -53,7 +82,10 @@
               {{ item.hindi_name || item.item_name }}
               @if (item.mrp_per_unit) {<span style="color:#94a3b8;">(₹{{ item.mrp_per_unit }})</span>}
             </span>
-            <span style="font-weight:600; white-space:nowrap;">{{ item.sheets_sold | sheetQty:item.units_per_sheet }}</span>
+            <span style="text-align:right; white-space:nowrap;">
+              <span style="font-weight:600;">{{ item.sheets_sold | sheetQty:item.units_per_sheet }}</span>
+              <span style="display:block; font-size:0.72rem; color:#94a3b8;">&#x20B9;{{ item.revenue | number:'1.0-0' }}</span>
+            </span>
           </div>
         } @empty {
           <p class="empty-msg">No sales this month yet.</p>
@@ -61,28 +93,59 @@
       </div>
     </div>
 
-    <!-- Today's Delivery Boys -->
+    <!-- Delivery Boys — current state, not scoped to today's activity. A boy
+         assigned stock 3 days ago and holding it still still shows up here;
+         the old "today" list went silent on any day nothing happened. -->
     <div class="card">
       <div class="card-head">
-        <h2 class="card-title">&#x1F69A; Delivery Boys Today</h2>
+        <h2 class="card-title">&#x1F69A; Delivery Boys</h2>
         <a routerLink="/app/reports" class="link-small">Full Report &#8594;</a>
       </div>
-      @for (row of eodSummary(); track row.delivery_boy_id) {
+      @for (row of boysSnapshot(); track row.delivery_boy_id) {
         <div class="boy-row">
           <div>
             <p class="boy-name">{{ row.delivery_boy_name }}</p>
-            <p class="boy-sub">Sold {{ row.sold }} sheets &middot; {{ row.remaining }} remaining</p>
+            <p class="boy-sub">
+              {{ row.sheetsHeld | number:'1.0-0' }} sheets currently held
+              &middot; sold {{ row.sheetsSoldThisWeek | number:'1.0-0' }} this week
+            </p>
           </div>
-          <span class="boy-cash">&#x20B9;{{ row.cashCollected | number:'1.0-0' }}</span>
+          <span class="boy-cash">&#x20B9;{{ row.cashCollectedThisWeek | number:'1.0-0' }}</span>
         </div>
       } @empty {
-        <p class="empty-msg">No assignments today.</p>
+        <p class="empty-msg">No active delivery boys holding stock.</p>
       }
     </div>
   </div>
 
-  <!-- Low Stock Alerts -->
-  @if (lowStock().length > 0) {
+  <!-- All-Time snapshot — cheap to show, gives context no other section does -->
+  <div class="card overall-card">
+    <h2 class="card-title">&#x1F4C8; All-Time, since {{ sinceLabel() }}</h2>
+    <div class="overall-grid">
+      <div>
+        <span class="overall-label">Total Revenue</span>
+        <span class="overall-value">&#x20B9;{{ overall().totalRevenue | number:'1.0-0' }}</span>
+      </div>
+      <div>
+        <span class="overall-label">Net Profit</span>
+        <span class="overall-value">&#x20B9;{{ overall().netProfit | number:'1.0-0' }}</span>
+        <span class="overall-sub">after overhead expenses</span>
+      </div>
+      <div>
+        <span class="overall-label">Total Orders</span>
+        <span class="overall-value">{{ overall().salesCount | number:'1.0-0' }}</span>
+      </div>
+      <div>
+        <span class="overall-label">Sheets Sold</span>
+        <span class="overall-value">{{ overall().totalSheets | number:'1.0-0' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low Stock Alerts — DISABLED (see comment in admin-dashboard.page.ts loadDashboard()
+       and features/admin-dashboard/REQUIREMENTS.md). total_stock isn't being kept current
+       right now, so this fired on nearly the whole catalog and was pure noise. -->
+  @if (false && lowStock().length > 0) {
     <div class="card alert-card">
       <h2 class="card-title">&#x26A0;&#xFE0F; Low Stock Alerts</h2>
       <div class="alert-grid">

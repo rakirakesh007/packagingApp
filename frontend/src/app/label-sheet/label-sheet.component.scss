@@ -24,6 +24,13 @@
   break-inside: avoid;
 }
 
+/* An unused sticker position. Keeps its grid cell (so the printed labels stay
+   aligned with the physical sheet) but puts no ink on it. */
+.label-card--blank {
+  border: none;
+  background: transparent;
+}
+
 /* ── Big pouch (3-inch) labels: 4 per row + scaled content to fill cell ─────── */
 .label-sheet.size-big {
   grid-template-columns: repeat(4, 1fr);

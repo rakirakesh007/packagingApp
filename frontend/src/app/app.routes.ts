@@ -46,6 +46,14 @@ export const routes: Routes = [
         canActivate: [adminGuard],
       },
       {
+        // Picker for a mixed label sheet. Lives inside the app shell (unlike
+        // /label-sheet, which sits outside it so printing has no nav chrome).
+        path: 'label-picker',
+        loadComponent: () =>
+          import('./label-picker/label-picker.page').then((m) => m.LabelPickerPage),
+        canActivate: [adminGuard],
+      },
+      {
         path: 'assignment',
         loadComponent: () =>
           import('./assignment/assignment.page').then((m) => m.AssignmentPage),

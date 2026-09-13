@@ -29,10 +29,13 @@ holdings are computed on read: `withBoy = Σ assigned (Loading) − Σ sold (Sal
 | Return 20 unsold | unchanged | −20 |
 
 ## API Endpoints
-- `POST /api/assignments` — create/update assignment (Loading doc only)
-- `POST /api/assignments/return` — record return (Return doc only)
-- `GET  /api/assignments/active/:deliveryBoyId` — today's assignment
-- `GET  /api/assignments/date/:deliveryBoyId?date=` — assignment for any date
+Mounted at `/assignment` (root-level, no `/api` prefix — see CLAUDE.md's API wiring rule).
+- `POST /assignment` — create/update today's assignment (Loading doc only, additive same-day/same-boy)
+- `GET  /assignment/holdings/:deliveryBoyId` — current holdings, i.e. `computeHoldings()`:
+  `withBoy = Σ assigned (Loading) − Σ sold (Sale) − Σ returned (Return)`, all-time running balance
+- `POST /assignment/return` — record return (Return doc only)
+- `GET  /assignment/active/:deliveryBoyId` — today's assignment
+- `GET  /assignment/date/:deliveryBoyId?date=` — assignment for any date
 
 ## Key Files
 - Frontend: `assignment/assignment.page.ts`
