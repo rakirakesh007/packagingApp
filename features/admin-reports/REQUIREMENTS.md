@@ -48,6 +48,7 @@ finance, and staff payroll — separate from the live KPI Dashboard.
 | `GET /admin/reports/overall` | All-time totals (revenue, profit, expenses, net, sheets, first sale) |
 | `GET /admin/reports/staff-monthly?month=&year=` | Per-staff payroll data |
 | `GET /admin/reports/boy-payout?month=&year=` | Per (date × boy) commission owed, split by ₹5/₹10 sheets |
+| `GET /admin/reports/daily-sales?month=&year=` | Per-day revenue for the whole month — feeds the Monthly tab's daily revenue bar chart |
 
 Removed: the orphaned `GET /reports/eod/:deliveryBoyId` endpoint and the unlinked
 `eod-report` page were deleted (July 2026) — the EOD tab here and the delivery boy's
