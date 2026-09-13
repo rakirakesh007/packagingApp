@@ -51,13 +51,19 @@ rather than one at a time. Supports two distinct sale types in the same entry se
 
 ---
 
-## Profit Calculation Rules (Backend — authoritative)
+## Profit Calculation Rules (Backend — authoritative, `POST /sale/bulk`)
+
+`hasRealCost = flat_profit_per_pouch > 0 || cost_per_sheet > 0` (checked per item).
 
 ### Wholesale
 ```
 sheets_sold  = quantity_sold
-final_price  = max(0, wholesale_price_per_sheet − discount) × sheets_sold
-profit       = final_price × 0.10   ← 10% margin
+selling_per_sheet = selling_price || round(wholesale_price_per_sheet × units_per_sheet)
+final_price  = selling_per_sheet × sheets_sold
+profit       = computeProfit(final_price, sheets_sold, item)
+               → flat_profit_per_pouch × units_per_sheet × sheets_sold, if set
+               → else final_price − cost_per_sheet × sheets_sold, if costed
+               → else legacy 10% of final_price (uncosted items only)
 stock_delta  = −sheets_sold
 ```
 
@@ -65,10 +71,16 @@ stock_delta  = −sheets_sold
 ```
 packets_sold = quantity_sold
 sheets_sold  = packets_sold / units_per_sheet          ← fractional
-final_price  = max(0, mrp_per_unit − discount) × packets_sold
-profit       = final_price × 0.10   ← 10% margin
+selling_per_unit = selling_price || mrp_per_unit
+final_price  = selling_per_unit × packets_sold
+profit       = hasRealCost
+               ? computeProfit(final_price, sheets_sold, item)   ← same precedence as wholesale
+               : (selling_per_unit − wholesale_price_per_sheet) × packets_sold   ← legacy fallback
 stock_delta  = −sheets_sold                            ← fractional MongoDB $inc
 ```
+
+See `utils/profit.util.ts` and CLAUDE.md's profit precedence rule — this is the same
+`computeProfit` used by the single-sale (`sales-cart`) flow, not a separate 10% model.
 
 ---
 
@@ -82,19 +94,3 @@ stock_delta  = −sheets_sold                            ← fractional MongoDB 
 | Schema   | `backend/src/models/sale.model.ts` → `saleItemSchema` |
 | Model    | `frontend/src/app/models/inventory.model.ts` |
 
-## Numbered Requirements
-1. Dynamic row table — add/remove rows; one row per shop+item
-2. Per-row fields:
-   - Shop Name, Mobile (optional)
-   - Item search/autocomplete (hindi + english name, ₹/sheet shown)
-   - **Wholesale Price/Sheet** (readonly, from inventory)
-   - **Sheets Sold** (editable)
-   - **Discount/Sheet** (editable, default 0)
-   - Subtotal and Profit auto-calculated in the row
-3. Grand total and total profit shown in footer
-4. Validation per row before batch submission
-5. Server computes `final_price`, `profit` per item; `total_amount`, `total_discount`, `total_profit` per sale
-6. Success/error toast feedback
-
-## Key Files
-- Frontend: `admin-bulk-entry/admin-bulk-entry.component.ts`

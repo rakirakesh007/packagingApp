@@ -47,6 +47,7 @@ interface SaleRowControls {
 
 /** Partial mirror of SaleRowControls values for calculation helpers */
 type RowValue = Partial<{
+  itemId:                    string;
   sale_type:                 SaleType;
   quantity_sold:             number;
   selling_price:             number;
@@ -207,17 +208,48 @@ export class AdminBulkEntryComponent implements OnInit {
     return price * qty;
   }
 
+  /**
+   * Mirrors backend `computeProfit()` (utils/profit.util.ts) EXACTLY, so the
+   * live preview shown while entering a row matches what gets saved on submit.
+   *
+   * BUG FIXED (2026-09-07): this used to always apply the legacy 10%-of-wholesale
+   * (wholesale) / selling-minus-wholesale (retail) formula, ignoring cost_per_sheet
+   * and flat_profit_per_pouch entirely — those fields were never even loaded into
+   * this page. Verified against live data: all 46 in-stock items showed a wrong
+   * profit preview, understating real profit by up to ~3x (e.g. Chilli Powder ₹10:
+   * screen showed ₹85, backend actually saved ₹272.20 for the same row).
+   *
+   * Precedence, per item — same as the backend:
+   *   1. flat_profit_per_pouch > 0 → flat × units_per_sheet × sheets
+   *   2. cost_per_sheet > 0        → final_price − cost_per_sheet × sheets
+   *   3. uncosted wholesale        → 10% of per-sheet wholesale × sheets (legacy)
+   *   3. uncosted retail           → (selling_per_unit − wholesale_per_pkt) × packets (legacy)
+   */
   private calcProfit(v: RowValue): number {
-    const qty           = v.quantity_sold ?? 0;
-    const price         = Math.max(0, v.selling_price ?? 0);
+    const qty             = v.quantity_sold ?? 0;
+    const price            = Math.max(0, v.selling_price ?? 0);
+    const units             = v.units_per_sheet ?? 1;
     const wholesalePerPkt = v.wholesale_price_per_sheet ?? 0; // field holds per-packet wholesale
+    const item              = this.inventoryItems().find((i) => i.id === v.itemId);
+    const flat              = item?.flat_profit_per_pouch ?? 0;
+    const cost              = item?.cost_per_sheet ?? 0;
 
     if (v.sale_type === 'retail') {
-      // Retail: profit per packet = selling price (per packet) − wholesale cost per packet.
-      return (price - wholesalePerPkt) * qty;
+      const packets   = qty;
+      const sheets    = packets / Math.max(1, units); // fractional, matches backend
+      const finalPrice = price * packets;
+      const hasRealCost = flat > 0 || cost > 0;
+      if (!hasRealCost) return (price - wholesalePerPkt) * packets; // legacy retail fallback
+      if (flat > 0) return flat * units * sheets;
+      return finalPrice - cost * sheets;
     }
-    // Wholesale: 10% of per-sheet wholesale cost (wholesale_price_per_sheet × units_per_sheet).
-    return wholesalePerPkt * (v.units_per_sheet ?? 1) * 0.10 * qty;
+
+    // Wholesale
+    const sheets     = qty;
+    const finalPrice = price * sheets;
+    if (flat > 0) return flat * units * sheets;
+    if (cost > 0) return finalPrice - cost * sheets;
+    return wholesalePerPkt * units * 0.10 * sheets; // legacy fallback (uncosted item)
   }
 
   // ── Grand totals ──────────────────────────────────────────────────────────

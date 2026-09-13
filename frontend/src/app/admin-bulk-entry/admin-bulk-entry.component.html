@@ -173,11 +173,15 @@
     <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
       <span>
         <span class="inline-block w-3 h-3 rounded bg-blue-600 mr-1"></span>
-        <strong>Sheet</strong> — wholesale; profit = 10% of selling price per sheet.
+        <strong>Sheet</strong> — wholesale, sell by the sheet.
       </span>
       <span>
         <span class="inline-block w-3 h-3 rounded bg-orange-500 mr-1"></span>
-        <strong>Pkt</strong> — retail; profit = (selling price − wholesale ÷ units) per packet.
+        <strong>Pkt</strong> — retail, sell individual packets.
+      </span>
+      <span>
+        Profit uses the item's real cost when set (owner's costing sheet), else a
+        10% estimate — same rule as every other sale in the app.
       </span>
     </div>
 
