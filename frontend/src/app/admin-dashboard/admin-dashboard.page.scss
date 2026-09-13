@@ -59,6 +59,36 @@
   color: #111827;
   line-height: 1.1;
 }
+.kpi-delta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #16a34a; // up = green
+  &.down { color: #dc2626; }
+}
+.kpi-note {
+  font-size: 0.65rem;
+  color: #9ca3af;
+}
+
+// All-time snapshot
+.overall-card { background: #f8fafc; }
+.overall-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  @media (min-width: 640px) { grid-template-columns: repeat(4, 1fr); }
+}
+.overall-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+.overall-value { display: block; font-size: 1.35rem; font-weight: 800; color: #1e293b; }
+.overall-sub { display: block; font-size: 0.65rem; color: #94a3b8; margin-top: 0.1rem; }
 
 // Quick actions
 .section-wrap { margin-bottom: 1.5rem; }
@@ -110,6 +140,29 @@
 }
 .card-title { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0 0 0.75rem; }
 .card-head .card-title { margin-bottom: 0; }
+
+// Best-Selling Today
+.bestseller-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr 5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+}
+.bestseller-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1e293b; }
+.bestseller-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+.bestseller-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #fbbf24, #f97316);
+}
+.bestseller-qty { text-align: right; font-weight: 600; color: #374151; white-space: nowrap; }
 
 // Products
 .product-row {

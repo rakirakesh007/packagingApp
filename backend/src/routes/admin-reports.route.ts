@@ -34,12 +34,35 @@ function splitExpenses(expenses: Array<{ category?: string; amount?: number }>):
   return { overhead, stock, total: overhead + stock };
 }
 
-function getISTDayBounds(): { start: Date; end: Date } {
+/** `daysAgo=1` gives yesterday's IST day bounds. Date.UTC normalises a
+ *  negative/zero day-of-month, so this correctly rolls back across a month
+ *  boundary (e.g. 1st of the month -> last day of the previous month). */
+function getISTDayBounds(daysAgo = 0): { start: Date; end: Date } {
   const inIST = new Date(Date.now() + IST_OFFSET_MS);
-  const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate();
+  const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate() - daysAgo;
   return {
     start: new Date(Date.UTC(y, m, d,  0,  0,  0,   0) - IST_OFFSET_MS),
     end:   new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - IST_OFFSET_MS),
+  };
+}
+
+/**
+ * Rolling `days`-day window ending `offsetDays` days before today (IST),
+ * inclusive of both ends. offsetDays=0 -> the most recent `days` days,
+ * including today. offsetDays=days -> the equivalent window immediately
+ * before that (for week-over-week style comparisons).
+ *
+ * Deliberately rolling, not a Mon-Sun calendar week: the business doesn't
+ * operate every day, so a calendar week compared mid-week (e.g. "only
+ * Tuesday so far") would be misleadingly low against a full prior week.
+ * A rolling window is always a fair like-for-like comparison.
+ */
+function getISTRollingWindow(days: number, offsetDays = 0): { start: Date; end: Date } {
+  const inIST = new Date(Date.now() + IST_OFFSET_MS);
+  const y = inIST.getUTCFullYear(), m = inIST.getUTCMonth(), d = inIST.getUTCDate();
+  return {
+    start: new Date(Date.UTC(y, m, d - offsetDays - (days - 1), 0,  0,  0,   0) - IST_OFFSET_MS),
+    end:   new Date(Date.UTC(y, m, d - offsetDays,              23, 59, 59, 999) - IST_OFFSET_MS),
   };
 }
 
@@ -75,13 +98,22 @@ async function buildInvInfoMap(itemIds: string[]): Promise<Map<string, { units_p
 /**
  * GET /admin/reports/today — live KPIs for the dashboard.
  */
-router.get('/today', async (_req: Request, res: Response) => {
+/**
+ * GET /admin/reports/this-week — rolling 7-day KPI snapshot for the Dashboard,
+ * compared against the 7 days before that. Renamed from the old `/today`
+ * (2026-09-07): the business doesn't operate daily, so a strict "today" view
+ * showed ₹0 most days and a same-day comparison against "yesterday" was
+ * comparing noise to noise. Rolling 7-day windows smooth over the gaps.
+ */
+router.get('/this-week', async (_req: Request, res: Response) => {
   try {
-    const { start, end } = getISTDayBounds();
+    const { start, end } = getISTRollingWindow(7);
+    const { start: lwStart, end: lwEnd } = getISTRollingWindow(7, 7);
 
-    const [sales, loadings] = await Promise.all([
+    const [sales, loadings, lastWeekSales] = await Promise.all([
       SaleModel.find({ timestamp: { $gte: start, $lte: end } }),
       LoadingModel.find({ date: { $gte: start, $lte: end } }),
+      SaleModel.find({ timestamp: { $gte: lwStart, $lte: lwEnd } }),
     ]);
 
     const totalRevenue  = sales.reduce((s, sale) => s + sale.total_amount, 0);
@@ -89,6 +121,13 @@ router.get('/today', async (_req: Request, res: Response) => {
     const totalProfit   = sales.reduce((s, sale) => s + ((sale as any).total_profit ?? 0), 0);
     const cashCollected = sales.filter(s => s.payment_mode === 'cash').reduce((s, sale) => s + sale.total_amount, 0);
     const activeBoys    = loadings.length;
+
+    const lastWeek = {
+      totalRevenue:  lastWeekSales.reduce((s, sale) => s + sale.total_amount, 0),
+      totalSales:    lastWeekSales.length,
+      totalProfit:   lastWeekSales.reduce((s, sale) => s + ((sale as any).total_profit ?? 0), 0),
+      cashCollected: lastWeekSales.filter(s => s.payment_mode === 'cash').reduce((s, sale) => s + sale.total_amount, 0),
+    };
 
     const itemMap = new Map<string, { item_id: string; item_name: string; hindi_name: string; sheets_sold: number; revenue: number }>();
     sales.forEach(sale => {
@@ -109,7 +148,7 @@ router.get('/today', async (_req: Request, res: Response) => {
       .sort((a, b) => b.sheets_sold - a.sheets_sold)
       .slice(0, 5);
 
-    return res.json({ totalRevenue, totalSales, totalProfit, cashCollected, activeBoys, topItems });
+    return res.json({ totalRevenue, totalSales, totalProfit, cashCollected, activeBoys, topItems, lastWeek });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });
@@ -226,6 +265,54 @@ router.get('/eod-by-product', async (_req: Request, res: Response) => {
     }).filter(r => r.opening > 0 || r.sold > 0).sort((a, b) => b.sold - a.sold);
 
     return res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ message });
+  }
+});
+
+/**
+ * GET /admin/reports/boys-snapshot — Dashboard widget: EVERY active delivery
+ * boy's current state, regardless of whether anything happened today.
+ *
+ * Distinct from `/eod`, which is scoped to today's activity (today's Loading
+ * or today's Sale) for daily reconciliation — right tool for the Reports
+ * page, wrong one for a dashboard on a business that doesn't operate daily.
+ * A boy who was assigned stock 3 days ago and hasn't sold anything since
+ * still has real sheets out and should still show up here.
+ */
+router.get('/boys-snapshot', async (_req: Request, res: Response) => {
+  try {
+    const boys = await UserModel.find({ role: 'delivery_boy', isActive: true }).lean();
+    const { start, end } = getISTRollingWindow(7);
+
+    const snapshot = await Promise.all(
+      boys.map(async (boy) => {
+        const boyId = String(boy._id);
+        const [holdings, weekSales] = await Promise.all([
+          computeHoldings(boyId),
+          SaleModel.find({ delivery_boy_id: boyId, timestamp: { $gte: start, $lte: end } }).lean(),
+        ]);
+        const sheetsHeld = Math.round(holdings.reduce((sum, h) => sum + h.withBoy, 0) * 1000) / 1000;
+        const cashCollectedThisWeek = weekSales
+          .filter((s) => s.payment_mode === 'cash')
+          .reduce((sum, s) => sum + s.total_amount, 0);
+        const sheetsSoldThisWeek = Math.round(
+          weekSales.reduce((sum, s) => sum + (s.items ?? []).reduce((si: number, i: any) => si + (i.sheets_sold ?? 0), 0), 0) * 1000
+        ) / 1000;
+
+        return {
+          delivery_boy_id: boyId,
+          delivery_boy_name: boy.name || boy.username,
+          sheetsHeld,
+          sheetsSoldThisWeek,
+          cashCollectedThisWeek,
+        };
+      })
+    );
+
+    // Boys with nothing held and nothing sold this week add no signal — drop them.
+    return res.json(snapshot.filter((b) => b.sheetsHeld > 0.0001 || b.sheetsSoldThisWeek > 0.0001));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).json({ message });
