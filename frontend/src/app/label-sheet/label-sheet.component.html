@@ -4,7 +4,13 @@
       <p>Go to Inventory page and click download labels on an item</p>
     </div>
   } @else {
-    @for (item of labels(); track $index) {
+    @for (cell of labels(); track $index) {
+      @if (cell.kind === 'blank') {
+        <!-- Intentionally empty cell. Occupies its grid slot so the remaining
+             labels stay aligned with the physical stickers, and leaves this
+             sticker unprinted for a later pass. -->
+        <div class="label-card label-card--blank"></div>
+      } @else {
       <div class="label-card">
         <!-- Left: Logo Column -->
         <div class="logo-column">
@@ -25,23 +31,23 @@
 
         <!-- Right: Content Column -->
         <div class="content-column">
-          @if (item) {
+          @if (cell.kind === 'item') {
             <!-- Hindi Name -->
             <div class="item-name-hindi">
-              {{ item.hindi_name || item.item_name || 'Product' }}
+              {{ cell.item.hindi_name || cell.item.item_name || 'Product' }}
             </div>
 
             <!-- Product Name -->
             <div class="item-name-english">
-              {{ item.item_name || '' }}
+              {{ cell.item.item_name || '' }}
             </div>
 
             <!-- Wt / MRP / PKD — compact single line -->
             <div class="specs-line">
-              @if (item.quantity_per_unit) {
-                Wt:{{ item.quantity_per_unit }}g | MRP:₹{{ item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
+              @if (cell.item.quantity_per_unit) {
+                Wt:{{ cell.item.quantity_per_unit }}g | MRP:₹{{ cell.item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
               } @else {
-                MRP:₹{{ item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
+                MRP:₹{{ cell.item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
               }
             </div>
 
@@ -52,9 +58,9 @@
             </div>
 
             <!-- Ingredients (only shown when set) -->
-            @if (item.ingredients) {
+            @if (cell.item.ingredients) {
               <div class="quality-line">
-                <div class="quality-p1"><span class="quality-label">Ingr:</span> {{ item.ingredients }}</div>
+                <div class="quality-p1"><span class="quality-label">Ingr:</span> {{ cell.item.ingredients }}</div>
               </div>
             }
           } @else {
@@ -68,6 +74,7 @@
           }
         </div>
       </div>
+      }
     }
   }
 </div>

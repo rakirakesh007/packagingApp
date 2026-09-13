@@ -1,0 +1,121 @@
+<div class="picker-page">
+
+  <!-- Header -->
+  <div class="picker-header">
+    <div>
+      <h1 class="picker-title">Mixed Label Sheet</h1>
+      <p class="picker-sub">Pick several items and how many labels of each — they all print on one sheet.</p>
+    </div>
+    <a routerLink="/app/inventory" class="btn-back">&#8592; Inventory</a>
+  </div>
+
+  @if (loadError()) {
+    <div class="load-error">Could not load inventory. Check your connection and reload.</div>
+  }
+
+  <!-- Sheet setup -->
+  <div class="setup-card">
+    <div class="setup-row">
+      <span class="setup-label">Label size</span>
+      <div class="size-toggle">
+        <button type="button" [class.active]="size() === 'normal'" (click)="setSize('normal')">Normal</button>
+        <button type="button" [class.active]="size() === 'big'" (click)="setSize('big')">Big (3&quot;)</button>
+      </div>
+    </div>
+
+    <div class="setup-row">
+      <span class="setup-label">Skip used stickers</span>
+      <input
+        type="number" min="0" [max]="capacity()" class="skip-input"
+        [ngModel]="startAt()" (ngModelChange)="setStartAt($event)"
+      />
+      <span class="setup-hint">
+        @if (clampedStart() > 0) {
+          Printing starts at sticker {{ clampedStart() + 1 }} — for re-feeding a part-used sheet.
+        } @else {
+          Leave 0 for a fresh sheet.
+        }
+      </span>
+    </div>
+
+    <!-- Sticker map -->
+    <div class="cell-map" [style.grid-template-columns]="'repeat(' + cols() + ', 1fr)'">
+      @for (cell of cellMap(); track $index) {
+        <span class="cell" [class.skip]="cell === 'skip'" [class.fill]="cell === 'fill'"></span>
+      }
+    </div>
+    <div class="legend">
+      <span><i class="dot skip"></i> already used</span>
+      <span><i class="dot fill"></i> printing now</span>
+      <span><i class="dot"></i> left blank</span>
+    </div>
+
+    @if (hasIngredients()) {
+      <p class="ingr-note">
+        Selection includes an item with ingredients, so labels are taller —
+        only {{ capacity() }} fit on this sheet instead of {{ size() === 'big' ? 20 : 55 }}.
+      </p>
+    }
+  </div>
+
+  <!-- Item list -->
+  <input
+    type="search" class="search-input" placeholder="Search items…"
+    [ngModel]="search()" (ngModelChange)="search.set($event)"
+  />
+
+  <div class="item-list">
+    @for (item of visibleItems(); track item.id) {
+      <div class="item-row" [class.chosen]="countFor(item.id) > 0">
+        <div class="item-info">
+          <span class="item-name">
+            {{ item.hindi_name || item.item_name }}
+            @if (item.mrp_per_unit) { <span class="item-mrp">₹{{ item.mrp_per_unit }}</span> }
+          </span>
+          <span class="item-sub">
+            {{ item.item_name }}
+            @if (item.ingredients) { <span class="ingr-flag">has ingredients</span> }
+          </span>
+        </div>
+
+        <div class="item-controls">
+          <button type="button" class="step" (click)="bump(item.id, -1)" [disabled]="countFor(item.id) === 0">&minus;</button>
+          <input
+            type="number" min="0" class="count-input"
+            [ngModel]="countFor(item.id)" (ngModelChange)="setCount(item.id, $event)"
+          />
+          <button type="button" class="step" (click)="bump(item.id, 1)">+</button>
+          <button
+            type="button" class="fill-rest"
+            (click)="fillRemaining(item.id)"
+            [disabled]="available() - totalSelected() <= 0"
+            title="Use up the remaining stickers with this item"
+          >fill rest</button>
+        </div>
+      </div>
+    } @empty {
+      <p class="empty-msg">No items match “{{ search() }}”.</p>
+    }
+  </div>
+
+  <!-- Sticky footer -->
+  <div class="picker-footer">
+    <div class="footer-count" [class.over]="overflow()">
+      <span class="count-big">{{ totalSelected() }} / {{ available() }}</span>
+      <span class="count-sub">
+        @if (overflow()) {
+          {{ totalSelected() - available() }} too many — reduce to print
+        } @else if (clampedStart() > 0) {
+          labels used · {{ available() }} free on this sheet
+        } @else {
+          labels used on this sheet
+        }
+      </span>
+    </div>
+    <div class="footer-actions">
+      <button type="button" class="btn-clear" (click)="clearAll()" [disabled]="totalSelected() === 0">Clear</button>
+      <button type="button" class="btn-print" (click)="print()" [disabled]="!canPrint()">Preview &amp; Print &#8594;</button>
+    </div>
+  </div>
+
+</div>

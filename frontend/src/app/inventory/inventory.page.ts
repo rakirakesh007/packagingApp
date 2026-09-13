@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { InventoryService } from '../services/inventory.service';
 import { GlobalLoadingService } from '../services/global-loading.service';
 import { AuthService } from '../auth/auth.service';
@@ -26,7 +26,7 @@ interface InventoryGroup {
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule, SheetQtyPipe],
+  imports: [CommonModule, FormsModule, SheetQtyPipe, RouterLink],
   templateUrl: './inventory.page.html',
   styleUrls: ['./inventory.page.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

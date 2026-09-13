@@ -6,12 +6,23 @@
     </div>
 
     @if (isAdmin()) {
-      <button
-        (click)="openAddModal()"
-        class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm"
-      >
-        + Add Item
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Mixed label sheet: several items + counts on ONE sheet, instead of
+             burning a full sheet per item. -->
+        <a
+          routerLink="/app/label-picker"
+          class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 font-bold px-4 py-2 rounded-lg shadow-sm no-underline"
+          title="Print labels for several items on one sheet"
+        >
+          🏷️ Mixed Labels
+        </a>
+        <button
+          (click)="openAddModal()"
+          class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm"
+        >
+          + Add Item
+        </button>
+      </div>
     }
   </div>
 
