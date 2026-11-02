@@ -43,6 +43,15 @@ interface SaleRowControls {
   units_per_sheet:           FormControl<number>;
   /** MRP printed on individual packet — default retail price */
   mrp_per_unit:              FormControl<number>;
+  // ── Pack override (distributor deals) ────────────────────────────────────
+  // Grams actually packed for THIS sale, and the cost that follows. Defaults to
+  // the item's standard values, so an untouched row behaves exactly as before.
+  /** Grams per pouch for this sale (item's standard weight unless changed) */
+  grams_per_unit:            FormControl<number>;
+  /** ₹ per kg of raw material (typed when the item has none stored) */
+  rate_per_kg:               FormControl<number>;
+  /** Cost ₹/sheet INCLUDING packing. Auto-derived, but directly editable. */
+  cost_per_sheet:            FormControl<number>;
 }
 
 /** Partial mirror of SaleRowControls values for calculation helpers */
@@ -54,6 +63,9 @@ type RowValue = Partial<{
   wholesale_price_per_sheet: number;
   units_per_sheet:           number;
   mrp_per_unit:              number;
+  grams_per_unit:            number;
+  rate_per_kg:               number;
+  cost_per_sheet:            number;
 }>;
 
 @Component({
@@ -121,7 +133,62 @@ export class AdminBulkEntryComponent implements OnInit {
       wholesale_price_per_sheet: this.fb.control(0),
       units_per_sheet:           this.fb.control(10),
       mrp_per_unit:              this.fb.control(0),
+      grams_per_unit:            this.fb.control(0),
+      rate_per_kg:               this.fb.control(0),
+      cost_per_sheet:            this.fb.control(0),
     });
+  }
+
+  // ── Pack override panel ───────────────────────────────────────────────────
+  /** Rows whose pack panel is open. Same Set-signal idiom used across this app. */
+  expandedPackRows = signal<Set<number>>(new Set());
+
+  isPackOpen(i: number): boolean {
+    return this.expandedPackRows().has(i);
+  }
+
+  togglePack(i: number): void {
+    this.expandedPackRows.update((s) => {
+      const next = new Set(s);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  /** True when this row's pack differs from the item's standard weight. */
+  isCustomPack(i: number): boolean {
+    const v = this.rows.at(i).value;
+    const item = this.inventoryItems().find((x) => x.id === v.itemId);
+    if (!item) return false;
+    const grams = Number(v.grams_per_unit) || 0;
+    return grams > 0 && grams !== (item.quantity_per_unit ?? 0);
+  }
+
+  /**
+   * Recompute this row's cost from grams × rate, mirroring the backend's
+   * computePackCost() exactly (utils/pack-cost.util.ts):
+   *   grams × rate/kg × units ÷ 1000 × 1.02 + labour + packing + delivery
+   *
+   * The result INCLUDES packing — never add packing on top of it again.
+   * Leaves the cost untouched when grams or rate is missing, so the typed value
+   * (the escape hatch for items with no stored packing) survives.
+   */
+  recomputeRowCost(i: number): void {
+    const row = this.rows.at(i);
+    const v = row.getRawValue();
+    const item = this.inventoryItems().find((x) => x.id === v.itemId);
+    const grams = Number(v.grams_per_unit) || 0;
+    const rate = Number(v.rate_per_kg) || 0;
+    const units = Math.max(1, Number(v.units_per_sheet) || 1);
+    if (grams <= 0 || rate <= 0) return;
+
+    const material = (grams * rate * units) / 1000 * 1.02;
+    const extras =
+      (item?.labour_cost_per_sheet ?? 0) +
+      (item?.packing_cost_per_sheet ?? 0) +
+      (item?.delivery_cost_per_sheet ?? 0);
+    row.patchValue({ cost_per_sheet: Math.round((material + extras) * 100) / 100 });
+    this.recalcTotals();
   }
 
   addRow(): void {
@@ -185,6 +252,13 @@ export class AdminBulkEntryComponent implements OnInit {
       mrp_per_unit:              mrp,
       // Default selling price = wholesale × units (sheet) or MRP (packet); admin can override.
       selling_price:             isRetail ? mrp : wholesalePerPkt * units,
+      // Pack defaults = the item's standard spec. Untouched ⇒ identical to before.
+      grams_per_unit:            item.quantity_per_unit ?? 0,
+      rate_per_kg:               item.rate_per_kg ?? 0,
+      // Seed the cost ONLY for items priced by cost. Seeding it on a flat-profit
+      // item would make the cost branch win over flat and silently change its
+      // profit — no live item has both today, but don't depend on that.
+      cost_per_sheet:            (item.flat_profit_per_pouch ?? 0) > 0 ? 0 : (item.cost_per_sheet ?? 0),
     });
   }
 
@@ -220,6 +294,7 @@ export class AdminBulkEntryComponent implements OnInit {
    * screen showed ₹85, backend actually saved ₹272.20 for the same row).
    *
    * Precedence, per item — same as the backend:
+   *   0. row cost override > 0     → final_price − override × sheets  (pack panel)
    *   1. flat_profit_per_pouch > 0 → flat × units_per_sheet × sheets
    *   2. cost_per_sheet > 0        → final_price − cost_per_sheet × sheets
    *   3. uncosted wholesale        → 10% of per-sheet wholesale × sheets (legacy)
@@ -232,12 +307,16 @@ export class AdminBulkEntryComponent implements OnInit {
     const wholesalePerPkt = v.wholesale_price_per_sheet ?? 0; // field holds per-packet wholesale
     const item              = this.inventoryItems().find((i) => i.id === v.itemId);
     const flat              = item?.flat_profit_per_pouch ?? 0;
-    const cost              = item?.cost_per_sheet ?? 0;
+    // Row cost wins over the item's stored cost — the pack panel seeds it from the
+    // item, so an untouched row produces exactly the same number as before.
+    const rowCost           = Number(v.cost_per_sheet) || 0;
+    const cost              = rowCost > 0 ? rowCost : (item?.cost_per_sheet ?? 0);
 
     if (v.sale_type === 'retail') {
       const packets   = qty;
       const sheets    = packets / Math.max(1, units); // fractional, matches backend
       const finalPrice = price * packets;
+      if (rowCost > 0) return finalPrice - rowCost * sheets;   // 0. pack override
       const hasRealCost = flat > 0 || cost > 0;
       if (!hasRealCost) return (price - wholesalePerPkt) * packets; // legacy retail fallback
       if (flat > 0) return flat * units * sheets;
@@ -247,6 +326,9 @@ export class AdminBulkEntryComponent implements OnInit {
     // Wholesale
     const sheets     = qty;
     const finalPrice = price * sheets;
+    // 0. Pack override beats flat-profit — a flat ₹/pouch figure is for the item's
+    //    standard weight and is meaningless once the pack size changes.
+    if (rowCost > 0) return finalPrice - rowCost * sheets;
     if (flat > 0) return flat * units * sheets;
     if (cost > 0) return finalPrice - cost * sheets;
     return wholesalePerPkt * units * 0.10 * sheets; // legacy fallback (uncosted item)
@@ -278,6 +360,11 @@ export class AdminBulkEntryComponent implements OnInit {
         unit_type:       v.sale_type === 'retail' ? 'packet' : 'sheet',
         quantity_sold:   v.quantity_sold,
         selling_price:   v.selling_price,
+        // Pack spec. The backend recomputes/validates; these are its inputs, and
+        // get snapshotted onto the sale so the cost basis is auditable later.
+        grams_per_unit:  v.grams_per_unit,
+        rate_per_kg:     v.rate_per_kg,
+        cost_per_sheet:  v.cost_per_sheet,
       };
     });
     this.loading.show();

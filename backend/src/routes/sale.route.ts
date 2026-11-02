@@ -5,6 +5,7 @@ import { InventoryModel } from '../models/inventory.model';
 import { ShopModel } from '../models/shop.model';
 import { requireAdmin, requireSelfOrAdmin } from '../middleware/auth.middleware';
 import { computeProfit } from '../utils/profit.util';
+import { computePackCost } from '../utils/pack-cost.util';
 
 const router = Router();
 
@@ -162,6 +163,11 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
       const quantitySold = Number(row['quantity_sold'] ?? row['sheets_sold'] ?? row['quantity'] ?? 0);
       // Editable negotiated price: per-sheet for wholesale, per-packet for retail. 0 ⇒ fall back to default.
       const sellingPrice = Number(row['selling_price'] ?? 0);
+      // Optional pack overrides (distributor deals packed to a non-standard weight).
+      // All 0/absent on an ordinary row ⇒ nothing below changes behaviour.
+      const packGrams    = Number(row['grams_per_unit'] ?? 0);
+      const packRate     = Number(row['rate_per_kg'] ?? 0);
+      const packCostRow  = Number(row['cost_per_sheet'] ?? 0);
       return {
         shopName:      String(row['shopName'] ?? ''),
         shopMobile:    String(row['shopMobile'] ?? ''),
@@ -170,6 +176,9 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         unitType,
         quantitySold,
         sellingPrice,
+        packGrams,
+        packRate,
+        packCostRow,
         itemName:    String(row['itemName'] ?? ''),
         hindiName:   String(row['hindiName'] ?? ''),
         description: String(row['description'] ?? ''),
@@ -213,6 +222,27 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
       // Real cost data present ⇒ computeProfit (flat ₹/pouch > cost/sheet).
       const hasRealCost = ((inv as any)?.flat_profit_per_pouch ?? 0) > 0 || ((inv as any)?.cost_per_sheet ?? 0) > 0;
 
+      // ── Pack override (distributor deals) ──────────────────────────────────
+      // A row may be packed to a non-standard weight, so its cost is derived for
+      // this line only. Resolution order:
+      //   1. an explicit cost typed on the row (escape hatch when the item has no
+      //      stored packing/labour, which would otherwise understate cost)
+      //   2. derived from grams + rate on the row
+      //   3. none — behave exactly as before
+      // The item document is NEVER updated from these; a distributor deal must not
+      // change the retail pack size, the storefront price, or anyone's labels.
+      const packGrams = row.packGrams > 0 ? row.packGrams : 0;
+      const packRate  = row.packRate  > 0 ? row.packRate  : 0;
+      const derivedCost = computePackCost({
+        grams: packGrams,
+        rate_per_kg: packRate,
+        units_per_sheet: unitsPerSheet,
+        labour_cost_per_sheet:   (inv as any)?.labour_cost_per_sheet,
+        packing_cost_per_sheet:  (inv as any)?.packing_cost_per_sheet,
+        delivery_cost_per_sheet: (inv as any)?.delivery_cost_per_sheet,
+      });
+      const overrideCost = row.packCostRow > 0 ? row.packCostRow : derivedCost;
+
       if (row.saleType === 'retail') {
         // Retail: quantity is in individual packets; price is per packet (defaults to MRP).
         packetsSold  = row.quantitySold;
@@ -220,7 +250,9 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         const sellingPerUnit = Math.max(0, row.sellingPrice || mrpPerUnit);
         finalPrice       = sellingPerUnit * packetsSold;
         // Uncosted retail keeps its own legacy: selling − per-packet wholesale.
-        profit           = hasRealCost ? computeProfit(finalPrice, sheetsSold, inv) : (sellingPerUnit - wholesale) * packetsSold;
+        profit = (hasRealCost || overrideCost > 0)
+          ? computeProfit(finalPrice, sheetsSold, inv, overrideCost)
+          : (sellingPerUnit - wholesale) * packetsSold;
         sellingPerSheet  = sellingPerUnit * unitsPerSheet;    // normalized per-sheet snapshot
       } else {
         // Wholesale: quantity is in sheets; price is per sheet (defaults to per-packet wholesale × units).
@@ -229,8 +261,15 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
         sellingPerSheet = Math.max(0, row.sellingPrice || Math.round(wholesale * unitsPerSheet));
         finalPrice  = sellingPerSheet * sheetsSold;
         // computeProfit falls back to the legacy 10% formula when the item isn't costed.
-        profit      = computeProfit(finalPrice, sheetsSold, inv);
+        profit      = computeProfit(finalPrice, sheetsSold, inv, overrideCost);
       }
+
+      // What this line was actually packed to, and the cost its profit came from.
+      // Falls back to the item's standard values so every sale is auditable, not
+      // just distributor ones.
+      const gramsUsed = packGrams || ((inv as any)?.quantity_per_unit ?? 0) || null;
+      const rateUsed  = packRate  || ((inv as any)?.rate_per_kg ?? 0) || null;
+      const costUsed  = overrideCost || ((inv as any)?.cost_per_sheet ?? 0) || null;
 
       return {
         // ─ sale document ─
@@ -247,6 +286,9 @@ router.post('/bulk', requireAdmin, async (req: Request, res: Response) => {
             selling_price_per_sheet:   sellingPerSheet,
             final_price:               finalPrice,
             profit,
+            grams_per_unit:            gramsUsed,
+            rate_per_kg_used:          rateUsed,
+            cost_per_sheet_used:       costUsed,
             item_name:   inv?.item_name  ?? row.itemName  ?? '',
             hindi_name:  inv?.hindi_name ?? row.hindiName ?? '',
             description: inv?.description ?? row.description ?? '',

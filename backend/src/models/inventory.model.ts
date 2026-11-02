@@ -72,6 +72,40 @@ const inventorySchema = new Schema(
       min: 0,
       default: 0,
     },
+
+    // ── Cost breakdown ───────────────────────────────────────────────────────
+    // The four fields below DECOMPOSE cost_per_sheet; they are not extra costs
+    // on top of it:
+    //   cost_per_sheet = grams × rate_per_kg × units ÷ 1000 × 1.02
+    //                    + labour + packing + delivery
+    // Verified across all 34 checkable live items (2026-10): every one equals
+    // material + packing; none equals material alone. NEVER add packing on top
+    // of cost_per_sheet — that double-counts.
+    //
+    // They exist so cost can be re-derived when a pack is made to a non-standard
+    // weight (distributor deals — see utils/pack-cost.util.ts). All default to 0
+    // and stay 0 until the owner fills them in on the Inventory form; nothing is
+    // backfilled from the costing spreadsheet.
+    rate_per_kg: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    labour_cost_per_sheet: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    packing_cost_per_sheet: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    delivery_cost_per_sheet: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
     image_url: {
       type: String,
       trim: true,

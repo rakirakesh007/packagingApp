@@ -17,6 +17,14 @@ export interface InventoryItem {
   cost_per_sheet?: number;
   // flat_profit_per_pouch: owner-quoted fixed profit per pouch; takes precedence over cost_per_sheet
   flat_profit_per_pouch?: number;
+  // Cost breakdown — these DECOMPOSE cost_per_sheet, they are not extra costs on top:
+  //   cost_per_sheet = grams × rate_per_kg × units ÷ 1000 × 1.02 + labour + packing + delivery
+  // Used to re-derive cost when a pack is made to a non-standard weight (distributor deals).
+  // 0 = not filled in yet.
+  rate_per_kg?: number;
+  labour_cost_per_sheet?: number;
+  packing_cost_per_sheet?: number;
+  delivery_cost_per_sheet?: number;
   image_url?: string;
   ingredients?: string;
   search_aliases?: string;
