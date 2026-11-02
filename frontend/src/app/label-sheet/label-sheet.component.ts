@@ -94,6 +94,21 @@ export class LabelSheetComponent implements OnInit {
     return `${month}-${year}`;
   });
 
+  /**
+   * Compact Wt/MRP/PKD line, omitting any segment that doesn't apply instead of
+   * printing a placeholder dash. Previously an item with no MRP (e.g. a loose
+   * packet-mode variant sold at the day's market rate, which has no fixed MRP
+   * by design — see Cardamom 12g/25g/50g) printed "MRP:₹--" on the physical
+   * label, which reads as a data error rather than an intentional omission.
+   */
+  specsLineParts(item: InventoryItem): string[] {
+    const parts: string[] = [];
+    if (item.quantity_per_unit) parts.push(`Wt:${item.quantity_per_unit}g`);
+    if (item.mrp_per_unit) parts.push(`MRP:₹${item.mrp_per_unit}`);
+    parts.push(`PKD:${this.pkdMonthYear()}`);
+    return parts;
+  }
+
   batchNumber = computed(() => {
     const date = new Date();
     const day = String(date.getDate()).padStart(2, '0');

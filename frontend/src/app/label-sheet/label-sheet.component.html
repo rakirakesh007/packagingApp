@@ -42,13 +42,11 @@
               {{ cell.item.item_name || '' }}
             </div>
 
-            <!-- Wt / MRP / PKD — compact single line -->
+            <!-- Wt / MRP / PKD — compact single line. Segments that don't apply
+                 (e.g. no MRP on a market-rate loose packet) are omitted rather
+                 than shown as a placeholder dash — see specsLineParts(). -->
             <div class="specs-line">
-              @if (cell.item.quantity_per_unit) {
-                Wt:{{ cell.item.quantity_per_unit }}g | MRP:₹{{ cell.item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
-              } @else {
-                MRP:₹{{ cell.item.mrp_per_unit || '--' }} | PKD:{{ pkdMonthYear() }}
-              }
+              {{ specsLineParts(cell.item).join(' | ') }}
             </div>
 
             <!-- FSSAI — single line -->

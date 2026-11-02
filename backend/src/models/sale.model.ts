@@ -16,9 +16,17 @@ const saleItemSchema = new Schema(
     // final_price: revenue collected for this line item (backend-computed, never trust frontend)
     final_price:               { type: Number, required: true, min: 0, default: 0 },
     // profit: real profit for this line (see utils/profit.util.ts):
-    // flat_profit_per_pouch × units × sheets, else final_price − cost_per_sheet × sheets,
-    // else legacy 10% of per-sheet wholesale for items not costed yet.
+    // explicit cost override, else flat_profit_per_pouch × units × sheets,
+    // else final_price − cost_per_sheet × sheets, else legacy 10% of per-sheet wholesale.
     profit:                    { type: Number, required: true, default: 0 },
+    // ── Pack spec snapshot ───────────────────────────────────────────────────
+    // What was actually packed and what it actually cost, frozen at sale time.
+    // Rates move: without this, raising Jeera from ₹250 to ₹280/kg later would
+    // make past orders look like they earned something different. null on older
+    // sales recorded before this existed.
+    grams_per_unit:            { type: Number, default: null },
+    rate_per_kg_used:          { type: Number, default: null },
+    cost_per_sheet_used:       { type: Number, default: null },
     item_name:                 { type: String, required: true, trim: true, default: '' },
     hindi_name:                { type: String, trim: true, default: '' },
     description:               { type: String, trim: true, default: '' },
